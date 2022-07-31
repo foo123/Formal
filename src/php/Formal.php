@@ -703,6 +703,33 @@ class FormalValidator
     }
 }
 
+class FormalError
+{
+    private $key = array();
+    private $msg = '';
+
+    public function __construct($msg = '', $key = array())
+    {
+        $this->msg = (string)$msg;
+        $this->key = $key;
+    }
+
+    public function getMsg()
+    {
+        return $this->msg;
+    }
+
+    public function getKey()
+    {
+        return $this->key;
+    }
+
+    public function __toString()
+    {
+        return $this->msg;
+    }
+}
+
 class Formal
 {
     const VERSION = "1.0.0";
@@ -739,6 +766,8 @@ class Formal
             ->option('typecasters', array())
             ->option('validators', array())
             ->option('break_on_first_error', false)
+            ->option('invalid_value_msg', 'Invalid Value in "{key}"!')
+            ->option('missing_value_msg', 'Missing Value in "{key}"!')
         ;
     }
 
@@ -1014,7 +1043,8 @@ class Formal
                 }
                 else
                 {
-                    $KEY = implode('.', array_merge($root, $key));
+                    $KEY_ = array_merge($root, $key);
+                    $KEY = implode('.', $KEY_);
                     try {
                         $valid = $validator->exec(null, $KEY, $this, true);
                     } catch (FormalException $e) {
@@ -1022,13 +1052,14 @@ class Formal
                     }
                     if (!$valid)
                     {
-                        $this->err[] = "Missing Value in \"$KEY\"";
+                        $this->err[] = new FormalError(str_replace(array('{key}', '{args}'), array($KEY, ''), $this->option('missing_value_msg')), $KEY_);
                     }
                     return;
                 }
             }
 
-            $KEY = implode('.', array_merge($root, $key));
+            $KEY_ = array_merge($root, $key);
+            $KEY = implode('.', $KEY_);
             $err = null;
             try {
                 $valid = $validator->exec($data, $KEY, $this);
@@ -1038,7 +1069,7 @@ class Formal
             }
             if (!$valid)
             {
-                $this->err[] = empty($err) ? "Invalid Value in \"$KEY\"" : $err;
+                $this->err[] = new FormalError(empty($err) ? str_replace(array('{key}', '{args}'), array($KEY, ''), $this->option('invalid_value_msg')) : $err, $KEY_);
             }
         }
     }

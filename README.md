@@ -49,7 +49,11 @@ $data = $formal->process($_POST);
 $err = $formal->getErrors();
 
 print_r($data);
-echo implode("\n", $err);
+
+echo implode("\n", $err) . PHP_EOL;
+
+echo $err[0]->getMsg() . PHP_EOL;
+echo implode('.', $err[0]->getKey()) . PHP_EOL;
 
 /* output
 
@@ -73,6 +77,8 @@ Array
 "date.1" should match Y-m-d !
 "date.0" must be equal to "date.1"!
 
+"date.1" should match Y-m-d !
+date.1
 */
 ```
 
