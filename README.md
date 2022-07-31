@@ -5,6 +5,8 @@ A simple and versatile input data validation framework based on built-in and cus
 
 version **1.0.0**
 
+![Formal](/formal.jpg)
+
 
 ### Contents
 
