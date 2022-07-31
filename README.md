@@ -41,7 +41,7 @@ $formal = (new Formal())
             'num.*' => Formal::typecast('composite', [Formal::typecast('float'), Formal::typecast('clamp', [0.0, 1.0])
         ])])
         ->option('validators', [
-            'date.*' => Formal::validate('match', Formal::datetime('Y-m-d')),
+            'date.*' => Formal::validate('match', Formal::datetime('Y-m-d'), '"{key}" should match {args} !'),
             'date.0' => Formal::validate('eq', Formal::field('date.1'))
         ])
 ;
@@ -70,7 +70,7 @@ Array
 
 )
 
-"date.1" must match "Y-m-d" pattern!
+"date.1" should match Y-m-d !
 "date.0" must be equal to "date.1"!
 
 */
@@ -134,79 +134,79 @@ Formal::typecast(function($val, $key, $formalInstance) {
 Formal::validate('optional', $requiredValidator);
 
 // fields validator
-Formal::validate('fields', ['field1' => $validator1, 'field2' => $validator2, ..]);
+Formal::validate('fields', ['field1' => $validator1, 'field2' => $validator2, ..], $errMsg = null);
 
 // is numeric validator
-Formal::validate('numeric');
+Formal::validate('numeric', $args = null, $errMsg = null);
 
 // is object validator
-Formal::validate('object');
+Formal::validate('object', $args = null, $errMsg = null);
 
 // is array validator
-Formal::validate('array');
+Formal::validate('array', $args = null, $errMsg = null);
 
 // is file validator
 Formal::validate('file');
 
 // mime-type validator
-Formal::validate('mimetype', ['type1', 'type2', ..]);
+Formal::validate('mimetype', ['type1', 'type2', ..], $errMsg = null);
 
 // is empty validator
-Formal::validate('empty');
+Formal::validate('empty', $args = null, $errMsg = null);
 
 // max items validator
-Formal::validate('maxcount', $maxCount);
+Formal::validate('maxcount', $maxCount, $errMsg = null);
 
 // min items validator
-Formal::validate('mincount', $minCount);
+Formal::validate('mincount', $minCount, $errMsg = null);
 
 // max chars validator
-Formal::validate('maxlen', $maxLen);
+Formal::validate('maxlen', $maxLen, $errMsg = null);
 
 // min chars validator
-Formal::validate('minlen', $minLen);
+Formal::validate('minlen', $minLen, $errMsg = null);
 
 // max file size validator
-Formal::validate('maxsize', $maxSize);
+Formal::validate('maxsize', $maxSize, $errMsg = null);
 
 // min file size validator
-Formal::validate('minsize', $minSize);
+Formal::validate('minsize', $minSize, $errMsg = null);
 
 // equals validator
-Formal::validate('eq', $otherValueOrField);
+Formal::validate('eq', $otherValueOrField, $errMsg = null);
 
 // not equals validator
-Formal::validate('neq', $otherValueOrField);
+Formal::validate('neq', $otherValueOrField, $errMsg = null);
 
 // greater than validator
-Formal::validate('gt', $otherValueOrField);
+Formal::validate('gt', $otherValueOrField, $errMsg = null);
 
 // greater than or equal validator
-Formal::validate('gte', $otherValueOrField);
+Formal::validate('gte', $otherValueOrField, $errMsg = null);
 
 // less than validator
-Formal::validate('lt', $otherValueOrField);
+Formal::validate('lt', $otherValueOrField, $errMsg = null);
 
 // less than or equal validator
-Formal::validate('lte', $otherValueOrField);
+Formal::validate('lte', $otherValueOrField, $errMsg = null);
 
 // between values (included) validator
-Formal::validate('between', [$minValueOrField, $maxValueOrField]);
+Formal::validate('between', [$minValueOrField, $maxValueOrField], $errMsg = null);
 
 // in array of values validator
-Formal::validate('in', [$val1, $val2, ..]);
+Formal::validate('in', [$val1, $val2, ..], $errMsg = null);
 
 // not in array of values validator
-Formal::validate('not_in', [$val1, $val2, ..]);
+Formal::validate('not_in', [$val1, $val2, ..], $errMsg = null);
 
 // match pattern validator
-Formal::validate('match', $pattern);
+Formal::validate('match', $pattern, $errMsg = null);
 
 // match valid email pattern validator
-Formal::validate('email');
+Formal::validate('email', $args = null, $errMsg = null);
 
 // match valid url pattern validator
-Formal::validate('url');
+Formal::validate('url', $args = null, $errMsg = null);
 
 // not validator
 $validator->_not_();
@@ -223,6 +223,6 @@ Formal::validate(function($val, $key, $formalInstance, $missingValue) {
     // optionally you can throw FormalException with custom error message
     throw new FormalException('my custom error message');
     return false;
-}, $args = null);
+}, $args = null, $errMsg = null);
 ```
 

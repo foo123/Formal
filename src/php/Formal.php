@@ -347,24 +347,27 @@ class FormalValidator
 {
     public $func = null;
     public $inp = null;
+    public $msg = null;
 
-    public static function _($validator, $args = null)
+    public static function _($validator, $args = null, $msg = null)
     {
-        return new static($validator, $args);
+        return new static($validator, $args, $msg);
     }
 
-    public function __construct($validator, $args = null)
+    public function __construct($validator, $args = null, $msg = null)
     {
         if ($validator instanceof FormalValidator)
         {
             $this->func = $validator->func;
             $this->inp = $validator->inp;
+            $this->msg = empty($msg) ? $validator->msg : $msg;
         }
         else
         {
             $method = is_string($validator) ? 'v_' . strtolower(trim((string)$validator)) : null;
             $this->func = $method && method_exists($this, $method) ? array($this, $method) : (is_callable($validator) ? $validator : null);
             $this->inp = $args;
+            $this->msg = $msg;
         }
     }
 
@@ -372,6 +375,7 @@ class FormalValidator
     {
         $this->func = null;
         $this->inp = null;
+        $this->msg = null;
     }
 
     public function _and_($validator)
@@ -426,7 +430,7 @@ class FormalValidator
             }
         }
         $valid = $valid1 || $valid2;
-        if (!$valid) throw new FormalException("Either \" {$msg1} \" or \" {$msg2} \"!");
+        if (!$valid) throw new FormalException(empty($msg1) ? $msg2 : $msg1);
         return $valid;
     }
 
@@ -464,84 +468,84 @@ class FormalValidator
     public function v_numeric($v, $k, $m, $missingValue)
     {
         $valid = is_numeric($v);
-        if (!$valid) throw new FormalException("\"$k\" must be numeric value!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, ''), $this->msg) : "\"$k\" must be numeric value!");
         return $valid;
     }
 
     public function v_object($v, $k, $m, $missingValue)
     {
         $valid = is_object($v);
-        if (!$valid) throw new FormalException("\"$k\" must be an object!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, ''), $this->msg) : "\"$k\" must be an object!");
         return $valid;
     }
 
     public function v_array($v, $k, $m, $missingValue)
     {
         $valid = is_array($v);
-        if (!$valid) throw new FormalException("\"$k\" must be an array!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, ''), $this->msg) : "\"$k\" must be an array!");
         return $valid;
     }
 
     public function v_file($v, $k, $m, $missingValue)
     {
         $valid = is_file($v);
-        if (!$valid) throw new FormalException("\"$k\" must be a file!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, ''), $this->msg) : "\"$k\" must be a file!");
         return $valid;
     }
 
     public function v_mimetype($v, $k, $m, $missingValue)
     {
         $valid = in_array(mime_content_type($v), (array)$this->inp);
-        if (!$valid) throw new FormalException("\"$k\" mime-type must be one of [".implode(',', (array)$this->inp)."]!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, implode(',', (array)$this->inp)), $this->msg) : "\"$k\" mime-type must be one of [".implode(',', (array)$this->inp)."]!");
         return $valid;
     }
 
     public function v_empty($v, $k, $m, $missingValue)
     {
         $valid = $missingValue || (is_array($v) ? !count($v) : (is_string($v) && strlen(trim($v)) && is_file($v) ? !filesize($v) : !strlen(trim((string)$v))));
-        if (!$valid) throw new FormalException("\"$k\" must be empty!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, ''), $this->msg) : "\"$k\" must be empty!");
         return $valid;
     }
 
     public function v_maxcount($v, $k, $m, $missingValue)
     {
         $valid = count($v) <= $this->inp;
-        if (!$valid) throw new FormalException("\"$k\" must have at most {$this->inp} items!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at most {$this->inp} items!");
         return $valid;
     }
 
     public function v_mincount($v, $k, $m, $missingValue)
     {
         $valid = count($v) >= $this->inp;
-        if (!$valid) throw new FormalException("\"$k\" must have at least {$this->inp} items!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at least {$this->inp} items!");
         return $valid;
     }
 
     public function v_maxlen($v, $k, $m, $missingValue)
     {
         $valid = strlen($v) <= $this->inp;
-        if (!$valid) throw new FormalException("\"$k\" must have at most {$this->inp} characters!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at most {$this->inp} characters!");
         return $valid;
     }
 
     public function v_minlen($v, $k, $m, $missingValue)
     {
         $valid = strlen($v) >= $this->inp;
-        if (!$valid) throw new FormalException("\"$k\" must have at least {$this->inp} characters!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at least {$this->inp} characters!");
         return $valid;
     }
 
     public function v_maxsize($v, $k, $m, $missingValue)
     {
         $valid = filesize($v) <= $this->inp;
-        if (!$valid) throw new FormalException("\"$k\" must have at most {$this->inp} bytes!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at most {$this->inp} bytes!");
         return $valid;
     }
 
     public function v_minsize($v, $k, $m, $missingValue)
     {
         $valid = filesize($v) >= $this->inp;
-        if (!$valid) throw new FormalException("\"$k\" must have at least {$this->inp} bytes!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at least {$this->inp} bytes!");
         return $valid;
     }
 
@@ -550,11 +554,11 @@ class FormalValidator
         $val = $this->inp; $valm = $val;
         if ($val instanceof FormalField)
         {
-            $valm = '"' . $val->field . '"';
+            $valm = !empty($this->msg) ? $val->field : '"' . $val->field . '"';
             $val = $m->get($val->field);
         }
         $valid = $val === $v;
-        if (!$valid) throw new FormalException("\"$k\" must be equal to {$valm}!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $valm), $this->msg) : "\"$k\" must be equal to {$valm}!");
         return $valid;
     }
 
@@ -563,11 +567,11 @@ class FormalValidator
         $val = $this->inp; $valm = $val;
         if ($val instanceof FormalField)
         {
-            $valm = '"' . $val->field . '"';
+            $valm = !empty($this->msg) ? $val->field : '"' . $val->field . '"';
             $val = $m->get($val->field);
         }
         $valid = $val != $v;
-        if (!$valid) throw new FormalException("\"$k\" must not be equal to {$valm}!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $valm), $this->msg) : "\"$k\" must not be equal to {$valm}!");
         return $valid;
     }
 
@@ -576,11 +580,11 @@ class FormalValidator
         $val = $this->inp; $valm = $val;
         if ($val instanceof FormalField)
         {
-            $valm = '"' . $val->field . '"';
+            $valm = !empty($this->msg) ? $val->field : '"' . $val->field . '"';
             $val = $m->get($val->field);
         }
         $valid = $v > $val;
-        if (!$valid) throw new FormalException("\"$k\" must be greater than {$valm}!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $valm), $this->msg) : "\"$k\" must be greater than {$valm}!");
         return $valid;
     }
 
@@ -589,11 +593,11 @@ class FormalValidator
         $val = $this->inp; $valm = $val;
         if ($val instanceof FormalField)
         {
-            $valm = '"' . $val->field . '"';
+            $valm = !empty($this->msg) ? $val->field : '"' . $val->field . '"';
             $val = $m->get($val->field);
         }
         $valid = $v >= $val;
-        if (!$valid) throw new FormalException("\"$k\" must be greater than or equal to {$valm}!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $valm), $this->msg) : "\"$k\" must be greater than or equal to {$valm}!");
         return $valid;
     }
 
@@ -602,11 +606,11 @@ class FormalValidator
         $val = $this->inp; $valm = $val;
         if ($val instanceof FormalField)
         {
-            $valm = '"' . $val->field . '"';
+            $valm = !empty($this->msg) ? $val->field : '"' . $val->field . '"';
             $val = $m->get($val->field);
         }
         $valid = $v < $val;
-        if (!$valid) throw new FormalException("\"$k\" must be less than {$valm}!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $valm), $this->msg) : "\"$k\" must be less than {$valm}!");
         return $valid;
     }
 
@@ -615,11 +619,11 @@ class FormalValidator
         $val = $this->inp; $valm = $val;
         if ($val instanceof FormalField)
         {
-            $valm = '"' . $val->field . '"';
+            $valm = !empty($this->msg) ? $val->field : '"' . $val->field . '"';
             $val = $m->get($val->field);
         }
         $valid = $v <= $val;
-        if (!$valid) throw new FormalException("\"$k\" must be less than or equal to {$valm}!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $valm), $this->msg) : "\"$k\" must be less than or equal to {$valm}!");
         return $valid;
     }
 
@@ -630,16 +634,16 @@ class FormalValidator
         $minm = $min; $maxm = $max;
         if ($min instanceof FormalField)
         {
-            $minm = '"' . $min->field . '"';
+            $minm = !empty($this->msg) ? $min->field : '"' . $min->field . '"';
             $min = $m->get($min->field);
         }
         if ($max instanceof FormalField)
         {
-            $maxm = '"' . $max->field . '"';
+            $maxm = !empty($this->msg) ? $max->field : '"' . $max->field . '"';
             $max = $m->get($max->field);
         }
         $valid = ($min <= $v) && ($v <= $max);
-        if (!$valid) throw new FormalException("\"$k\" must be between {$minm} and {$maxm}!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, implode(',', array($minm, $maxm))), $this->msg) : "\"$k\" must be between {$minm} and {$maxm}!");
         return $valid;
     }
 
@@ -648,15 +652,15 @@ class FormalValidator
         $val = $this->inp;
         if ($val instanceof FormalField)
         {
-            $valm = '"' . $val->field . '"';
+            $valm = !empty($this->msg) ? $val->field : '"' . $val->field . '"';
             $val = $m->get($val->field);
         }
         else
         {
-            $valm = '[' . implode(',', (array)$val) . ']';
+            $valm = !empty($this->msg) ? implode(',', (array)$val) : '[' . implode(',', (array)$val) . ']';
         }
         $valid = in_array($v, (array)$val);
-        if (!$valid) throw new FormalException("\"$k\" must be one of {$valm}!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $valm), $this->msg) : "\"$k\" must be one of {$valm}!");
         return $valid;
     }
 
@@ -665,36 +669,36 @@ class FormalValidator
         $val = $this->inp;
         if ($val instanceof FormalField)
         {
-            $valm = '"' . $val->field . '"';
+            $valm = !empty($this->msg) ? $val->field : '"' . $val->field . '"';
             $val = $m->get($val->field);
         }
         else
         {
-            $valm = '[' . implode(',', (array)$val) . ']';
+            $valm = !empty($this->msg) ? implode(',', (array)$val) : '[' . implode(',', (array)$val) . ']';
         }
         $valid = !in_array($v, (array)$val);
-        if (!$valid) throw new FormalException("\"$k\" must not be one of {$valm}!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $valm), $this->msg) : "\"$k\" must not be one of {$valm}!");
         return $valid;
     }
 
     public function v_match($v, $k, $m, $missingValue)
     {
         $valid = (bool)preg_match((string)$this->inp, (string)$v);
-        if (!$valid) throw new FormalException("\"$k\" must match " . ($this->inp instanceof FormalDateTime ? '"' . $this->inp->getFormat() . '"' : 'the') . " pattern!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp instanceof FormalDateTime ? $this->inp->getFormat() : $this->inp), $this->msg) : "\"$k\" must match " . ($this->inp instanceof FormalDateTime ? '"' . $this->inp->getFormat() . '"' : 'the') . " pattern!");
         return $valid;
     }
 
     public function v_email($v, $k, $m, $missingValue)
     {
         $valid = (bool)preg_match('/^(([^<>()[\\]\\\\.,;:\\s@\\"]+(\\.[^<>()[\\]\\\\.,;:\\s@\\"]+)*)|(\\".+\\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$/', (string)$v);
-        if (!$valid) throw new FormalException("\"$k\" must be valid email pattern!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, ''), $this->msg) : "\"$k\" must be valid email pattern!");
         return $valid;
     }
 
     public function v_url($v, $k, $m, $missingValue)
     {
         $valid = (bool)preg_match('/^(?!mailto:)(?:(?:http|https|ftp)://)(?:\\S+(?::\\S*)?@)?(?:(?:(?:[1-9]\\d?|1\\d\\d|2[01]\\d|22[0-3])(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}(?:\\.(?:[0-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-4]))|(?:(?:[a-z\\u00a1-\\uffff0-9]+-?)*[a-z\\u00a1-\\uffff0-9]+)(?:\\.(?:[a-z\\u00a1-\\uffff0-9]+-?)*[a-z\\u00a1-\\uffff0-9]+)*(?:\\.(?:[a-z\\u00a1-\\uffff]{2,})))|localhost)(?::\\d{2,5})?(?:(/|\\?|#)[^\\s]*)?$/i', (string)$v);
-        if (!$valid) throw new FormalException("\"$k\" must be valid url pattern!");
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, ''), $this->msg) : "\"$k\" must be valid url pattern!");
         return $valid;
     }
 }
@@ -719,9 +723,9 @@ class Formal
         return new FormalType($type, $args);
     }
 
-    public static function validate($validator, $args = null)
+    public static function validate($validator, $args = null, $msg = null)
     {
-        return new FormalValidator($validator, $args);
+        return new FormalValidator($validator, $args, $msg);
     }
 
     private $opts = array();

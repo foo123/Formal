@@ -25,7 +25,7 @@ tico('http://localhost:8000', ROOT)
                     'num.*' => Formal::typecast('composite', [Formal::typecast('float'), Formal::typecast('clamp', [0.0, 1.0])
                 ])])
                 ->option('validators', [
-                    'date.*' => Formal::validate('match', Formal::datetime('Y-m-d')),
+                    'date.*' => Formal::validate('match', Formal::datetime('Y-m-d'), '"{key}" should match {args} !'),
                     'date.0' => Formal::validate('eq', Formal::field('date.1'))
                 ])
                 ->process(tico()->request()->request->all())
