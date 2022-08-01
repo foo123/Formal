@@ -432,7 +432,7 @@ class FormalValidator
             }
         }
         $valid = $valid1 || $valid2;
-        if (!$valid) throw new FormalException(empty($msg1) ? $msg2 : $msg1);
+        if (!$valid && (!empty($msg1) || !empty($msg2))) throw new FormalException(empty($msg1) ? $msg2 : $msg1);
         return $valid;
     }
 
@@ -774,12 +774,12 @@ class Formal
         $this
             ->option('WILDCARD', '*')
             ->option('SEPARATOR', '.')
-            ->option('defaults', array())
-            ->option('typecasters', array())
-            ->option('validators', array())
             ->option('break_on_first_error', false)
             ->option('invalid_value_msg', 'Invalid Value in "{key}"!')
             ->option('missing_value_msg', 'Missing Value in "{key}"!')
+            ->option('defaults', array())
+            ->option('typecasters', array())
+            ->option('validators', array())
         ;
     }
 
