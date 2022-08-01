@@ -266,9 +266,11 @@ class FormalType
 
     public function t_fields($v, $k, $m)
     {
+        if (!is_array($v)) return $v;
+        $SEPARATOR = $m->option('SEPARATOR');
         foreach ($this->inp as $field => $type)
         {
-            $v[$field] = $type->exec($v[$field], $k, $m);
+            $v[$field] = $type->exec(isset($v[$field]) ? $v[$field] : null, empty($k) ? $field : "{$k}{$SEPARATOR}{$field}", $m);
         }
         return $v;
     }
@@ -276,7 +278,7 @@ class FormalType
     public function t_default($v, $k, $m)
     {
         $defaultValue = $this->inp;
-        if ((null === $v) || (is_string($v) && !strlen(trim($v))))
+        if (is_null($v) || (is_string($v) && !strlen(trim($v))))
         {
             $v = $defaultValue;
         }
@@ -456,11 +458,20 @@ class FormalValidator
 
     public function v_fields($v, $k, $m, $missingValue)
     {
-        $validatorsPerField = $this->inp;
-        foreach ($validatorsPerField as $field => $validator)
+        if (!is_array($v)) return false;
+        $SEPARATOR = $m->option('SEPARATOR');
+        foreach ($this->inp as $field => $validator)
         {
-            if (!$validator->exec($v[$field], $k, $m))
-                return false;
+            if (!array_key_exists($field, $v))
+            {
+                if (!$validator->exec(null, empty($k) ? $field : "{$k}{$SEPARATOR}{$field}", $m, true))
+                    return false;
+            }
+            else
+            {
+                if (!$validator->exec($v[$field], empty($k) ? $field : "{$k}{$SEPARATOR}{$field}", $m, $missingValue))
+                    return false;
+            }
         }
         return true;
     }
@@ -733,7 +744,6 @@ class FormalError
 class Formal
 {
     const VERSION = "1.0.0";
-    const WILDCARD = "*";
 
     public static function field($field)
     {
@@ -762,6 +772,8 @@ class Formal
     public function __construct()
     {
         $this
+            ->option('WILDCARD', '*')
+            ->option('SEPARATOR', '.')
             ->option('defaults', array())
             ->option('typecasters', array())
             ->option('validators', array())
@@ -789,10 +801,12 @@ class Formal
     {
         $this->data = null;
         $this->err = array();
-        $data = $this->doMergeDefaults($data, $this->option('defaults'));
-        $data = $this->doTypecast($data, $this->option('typecasters'));
+        $WILDCARD = $this->option('WILDCARD');
+        $SEPARATOR = $this->option('SEPARATOR');
+        $data = $this->doMergeDefaults($data, $this->option('defaults'), $WILDCARD, $SEPARATOR);
+        $data = $this->doTypecast($data, $this->option('typecasters'), array(), array(), $WILDCARD, $SEPARATOR);
         $this->data = $data;
-        $this->doValidate($data, $this->option('validators'));
+        $this->doValidate($data, $this->option('validators'), array(), array(), $WILDCARD, $SEPARATOR);
         $this->data = null;
         return $data;
     }
@@ -805,19 +819,20 @@ class Formal
     public function get($field, $default = null, $data = null)
     {
         if (null === $data) $data = $this->data;
+        $WILDCARD = $this->option('WILDCARD');
+        $SEPARATOR = $this->option('SEPARATOR');
         $is_object = is_object($data);
         $is_array = is_array($data);
         $result = null;
-        $WILDCARD = static::WILDCARD;
         if ((is_string($field) || is_numeric($field)) && ($is_object || $is_array))
         {
-            $stack = array(array(&$data, $field));
+            $stack = array(array(&$data, (string)$field));
             while (!empty($stack))
             {
                 $to_get = array_pop($stack);
                 $o =& $to_get[0];
                 $key = $to_get[1];
-                $p = explode('.', $key);
+                $p = explode($SEPARATOR, $key);
                 $i = 0;
                 $l = count($p);
                 while ($i < $l)
@@ -830,10 +845,10 @@ class Formal
                             if ($WILDCARD === $k)
                             {
                                 $result = array();
-                                $k = implode('.', array_slice($p, $i));
+                                $k = implode($SEPARATOR, array_slice($p, $i));
                                 foreach (array_keys((array)$o) as $key)
                                 {
-                                    $stack[] = array(&$o, "{$key}.{$k}");
+                                    $stack[] = array(&$o, "{$key}{$SEPARATOR}{$k}");
                                 }
                                 break;
                             }
@@ -847,10 +862,10 @@ class Formal
                             if ($WILDCARD === $k)
                             {
                                 $result = array();
-                                $k = implode('.', array_slice($p, $i));
+                                $k = implode($SEPARATOR, array_slice($p, $i));
                                 foreach (array_keys($o) as $key)
                                 {
-                                    $stack[] = array(&$o, "{$key}.{$k}");
+                                    $stack[] = array(&$o, "{$key}{$SEPARATOR}{$k}");
                                 }
                                 break;
                             }
@@ -910,39 +925,107 @@ class Formal
         return $default;
     }
 
-    private function doMergeDefaults($data, $defaults, $recursive = true)
+    private function doMergeKeys($keys, $def)
+    {
+        $n = count($keys);
+        $defaults = $def;
+        for ($i=$n-1; $i>=0; --$i)
+        {
+            $o = array();
+            $k = $keys[$i];
+            if (is_array($k))
+            {
+                foreach ($k as $kk)
+                {
+                    $o[$kk] = $defaults;
+                }
+            }
+            else
+            {
+                $o[$k] = $defaults;
+            }
+            $defaults = $o;
+        }
+        return $defaults;
+    }
+
+    private function doMergeDefaults($data, $defaults, $WILDCARD = '*', $SEPARATOR = '.')
     {
         if (is_array($data))
         {
             foreach ($defaults as $key => $def)
             {
-                if (array_key_exists($key, $data))
+                $kk = explode($SEPARATOR, $key);
+                $n = count($kk);
+                if (1 < $n)
                 {
-                    if ($recursive && is_array($data[$key]) && is_array($def))
+                    $o = $data;
+                    $keys = array();
+                    $doMerge = true;
+                    for ($i=0; $i<$n; ++$i)
                     {
-                        $data[$key] = $this->merge($data[$key], $def, $recursive);
+                        $k = $kk[$i];
+                        if ($WILDCARD === $k)
+                        {
+                            $ok = array_keys($o);
+                            if (empty($ok))
+                            {
+                                $doMerge = false;
+                                break;
+                            }
+                            $keys[] = $ok;
+                            $o = $o[$ok[0]];
+                        }
+                        elseif (array_key_exists($k, $o))
+                        {
+                            $keys[] = $k;
+                            $o = $o[$k];
+                        }
+                        elseif ($i === $n-1)
+                        {
+                            $keys[] = $k;
+                        }
+                        else
+                        {
+                            $doMerge = false;
+                            break;
+                        }
                     }
-                    elseif (is_null($data[$key]) || (is_string($data[$key]) && !strlen(trim($data[$key]))))
+                    if ($doMerge)
                     {
-                        $data[$key] = $def;
+                        $data = $this->doMergeDefaults($data, $this->doMergeKeys($keys, $def), $WILDCARD, $SEPARATOR);
                     }
                 }
                 else
                 {
-                    $data[$key] = $def;
+                    if (array_key_exists($key, $data))
+                    {
+                        if (is_array($data[$key]) && is_array($def))
+                        {
+                            $data[$key] = $this->doMergeDefaults($data[$key], $def, $WILDCARD, $SEPARATOR);
+                        }
+                        elseif (is_null($data[$key]) || (is_string($data[$key]) && !strlen(trim($data[$key]))))
+                        {
+                            $data[$key] = $def;
+                        }
+                    }
+                    else
+                    {
+                        $data[$key] = $def;
+                    }
                 }
             }
         }
         return $data;
     }
 
-    private function doTypecast($data, $typecaster, $key = array(), $root = array())
+    private function doTypecast($data, $typecaster, $key = array(), $root = array(), $WILDCARD = '*', $SEPARATOR = '.')
     {
         if (is_array($typecaster))
         {
             foreach ($typecaster as $k => $t)
             {
-                $data = $this->doTypecast($data, $t, empty($key) ? explode('.', $k) : array_merge($key, explode('.', $k)), $root);
+                $data = $this->doTypecast($data, $t, empty($key) ? explode($SEPARATOR, $k) : array_merge($key, explode($SEPARATOR, $k)), $root, $WILDCARD, $SEPARATOR);
             }
         }
         elseif ($typecaster instanceof FormalType)
@@ -955,7 +1038,7 @@ class Formal
                 {
                     return $data;
                 }
-                elseif (static::WILDCARD === $k)
+                elseif ($WILDCARD === $k)
                 {
                     if ($i < $n)
                     {
@@ -963,7 +1046,7 @@ class Formal
                         $root = array_merge($root, array_slice($key, 0, $i-1));
                         foreach (array_keys($data) as $ok)
                         {
-                            $data[$ok] = $this->doTypecast($data[$ok], $typecaster, $rk, array_merge($root, array($ok)));
+                            $data[$ok] = $this->doTypecast($data[$ok], $typecaster, $rk, array_merge($root, array($ok)), $WILDCARD, $SEPARATOR);
                         }
                     }
                     else
@@ -971,7 +1054,7 @@ class Formal
                         $root = array_merge($root, array_slice($key, 0, $i-1));
                         foreach (array_keys($data) as $ok)
                         {
-                            $data = $this->doTypecast($data, $typecaster, array($ok), $root);
+                            $data = $this->doTypecast($data, $typecaster, array($ok), $root, $WILDCARD, $SEPARATOR);
                         }
                     }
                     return $data;
@@ -980,7 +1063,7 @@ class Formal
                 {
                     $rk = array_slice($key, $i);
                     $root = array_merge($root, array_slice($key, 0, $i));
-                    $data[$k] = $this->doTypecast($data[$k], $typecaster, $rk, $root);
+                    $data[$k] = $this->doTypecast($data[$k], $typecaster, $rk, $root, $WILDCARD, $SEPARATOR);
                 }
                 else
                 {
@@ -989,21 +1072,21 @@ class Formal
             }
             else
             {
-                $KEY = implode('.', array_merge($root, $key));
+                $KEY = implode($SEPARATOR, array_merge($root, $key));
                 $data = $typecaster->exec($data, $KEY, $this);
             }
         }
         return $data;
     }
 
-    private function doValidate($data, $validator, $key = array(), $root = array())
+    private function doValidate($data, $validator, $key = array(), $root = array(), $WILDCARD = '*', $SEPARATOR = '.')
     {
         if ($this->option('break_on_first_error') && !empty($this->err)) return;
         if (is_array($validator))
         {
             foreach ($validator as $k => $v)
             {
-                $this->doValidate($data, $v, empty($key) ? explode('.', $k) : array_merge($key, explode('.', $k)), $root);
+                $this->doValidate($data, $v, empty($key) ? explode($SEPARATOR, $k) : array_merge($key, explode($SEPARATOR, $k)), $root, $WILDCARD, $SEPARATOR);
             }
         }
         elseif ($validator instanceof FormalValidator)
@@ -1014,9 +1097,9 @@ class Formal
                 $k = $key[$i++];
                 if ('' === $k)
                 {
-                    return;
+                    continue;
                 }
-                elseif (static::WILDCARD === $k)
+                elseif ($WILDCARD === $k)
                 {
                     if ($i < $n)
                     {
@@ -1024,7 +1107,7 @@ class Formal
                         $root = array_merge($root, array_slice($key, 0, $i-1));
                         foreach (array_keys($data) as $ok)
                         {
-                            $this->doValidate($data[$ok], $validator, $rk, array_merge($root, array($ok)));
+                            $this->doValidate($data[$ok], $validator, $rk, array_merge($root, array($ok)), $WILDCARD, $SEPARATOR);
                         }
                     }
                     else
@@ -1032,7 +1115,7 @@ class Formal
                         $root = array_merge($root, array_slice($key, 0, $i-1));
                         foreach (array_keys($data) as $ok)
                         {
-                            $this->doValidate($data, $validator, array($ok), $root);
+                            $this->doValidate($data, $validator, array($ok), $root, $WILDCARD, $SEPARATOR);
                         }
                     }
                     return;
@@ -1044,7 +1127,7 @@ class Formal
                 else
                 {
                     $KEY_ = array_merge($root, $key);
-                    $KEY = implode('.', $KEY_);
+                    $KEY = implode($SEPARATOR, $KEY_);
                     try {
                         $valid = $validator->exec(null, $KEY, $this, true);
                     } catch (FormalException $e) {
@@ -1059,7 +1142,7 @@ class Formal
             }
 
             $KEY_ = array_merge($root, $key);
-            $KEY = implode('.', $KEY_);
+            $KEY = implode($SEPARATOR, $KEY_);
             $err = null;
             try {
                 $valid = $validator->exec($data, $KEY, $this);

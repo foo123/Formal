@@ -1,7 +1,7 @@
 Formal
 ======
 
-A simple and versatile input data validation framework based on built-in and custom rules for PHP, JavaScript, Python
+A simple and versatile (form) input data validation framework based on built-in and custom rules for PHP, JavaScript, Python
 
 version **1.0.0**
 
@@ -20,6 +20,16 @@ version **1.0.0**
 <form method="post">
 Foo: <input name="foo" type="text" value="" />
 
+Moo:
+<input name="moo[0][choo]" type="text" value="1" />
+<input name="moo[1][choo]" type="text" value="2" />
+<input name="moo[2][choo]" type="text" value="3" />
+
+Koo:
+<input name="koo[]" type="text" value="" />
+<input name="koo[]" type="text" value="" />
+<input name="koo[]" type="text" value="" />
+
 Nums:
 <input name="num[]" type="text" value="0.1" />
 <input name="num[]" type="text" value="1.2" />
@@ -34,8 +44,13 @@ Dates:
 
 ```php
 $formal = (new Formal())
+        ->option('WILDCARD', '*') // default
+        ->option('SEPARATOR', '.') // default
+        ->option('break_on_first_error', false) // default
         ->option('defaults', [
-            'foo' => 'bar'
+            'foo' => 'bar',
+            'moo.*.foo' => 'bar',
+            'koo.*' => 'bar'
         ])
         ->option('typecasters', [
             'num.*' => Formal::typecast('composite', [Formal::typecast('float'), Formal::typecast('clamp', [0.0, 1.0])
@@ -60,6 +75,35 @@ echo implode('.', $err[0]->getKey()) . PHP_EOL;
 Array
 (
     [foo] => bar
+    [moo] => Array
+        (
+            [0] => Array
+                (
+                    [choo] => 1
+                    [foo] => bar
+                )
+
+            [1] => Array
+                (
+                    [choo] => 2
+                    [foo] => bar
+                )
+
+            [2] => Array
+                (
+                    [choo] => 3
+                    [foo] => bar
+                )
+
+        )
+
+    [koo] => Array
+        (
+            [0] => bar
+            [1] => bar
+            [2] => bar
+        )
+
     [num] => Array
         (
             [0] => 0.1
@@ -73,7 +117,6 @@ Array
         )
 
 )
-
 "date.1" should match Y-m-d !
 "date.0" must be equal to "date.1"!
 
@@ -152,7 +195,7 @@ Formal::validate('object', $args = null, $errMsg = null);
 Formal::validate('array', $args = null, $errMsg = null);
 
 // is file validator
-Formal::validate('file');
+Formal::validate('file', $args = null, $errMsg = null);
 
 // mime-type validator
 Formal::validate('mimetype', ['type1', 'type2', ..], $errMsg = null);

@@ -9,7 +9,11 @@ tico('http://localhost:8000', ROOT)
     ->option('case_insensitive_uris', true)
     ->set('formal', function() {
         include(ROOT.'/../src/php/Formal.php');
-        return (new Formal());
+        return (new Formal())
+            ->option('WILDCARD', '*') // default
+            ->option('SEPARATOR', '.') // default
+            ->option('break_on_first_error', false) // default
+        ;
     })
     ->on('*', '/', function() {
 
@@ -19,7 +23,9 @@ tico('http://localhost:8000', ROOT)
         {
             $data = tico()->get('formal')
                 ->option('defaults', [
-                    'foo' => 'bar'
+                    'foo' => 'bar',
+                    'moo.*.foo' => 'bar',
+                    'koo.*' => 'bar'
                 ])
                 ->option('typecasters', [
                     'num.*' => Formal::typecast('composite', [Formal::typecast('float'), Formal::typecast('clamp', [0.0, 1.0])
