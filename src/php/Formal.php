@@ -451,7 +451,7 @@ class FormalValidator
         $valid = true;
         if (!$missingValue)
         {
-            $valid = $this->inp->exec($v, $k, $m);
+            $valid = $this->inp->exec($v, $k, $m, false);
         }
         return $valid;
     }
@@ -1128,14 +1128,16 @@ class Formal
                 {
                     $KEY_ = array_merge($root, $key);
                     $KEY = implode($SEPARATOR, $KEY_);
+                    $err = null;
                     try {
                         $valid = $validator->exec(null, $KEY, $this, true);
                     } catch (FormalException $e) {
                         $valid = false;
+                        $err = $e->getMessage();
                     }
                     if (!$valid)
                     {
-                        $this->err[] = new FormalError(str_replace(array('{key}', '{args}'), array($KEY, ''), $this->option('missing_value_msg')), $KEY_);
+                        $this->err[] = new FormalError(empty($err) ? str_replace(array('{key}', '{args}'), array($KEY, ''), $this->option('missing_value_msg')) : $err, $KEY_);
                     }
                     return;
                 }

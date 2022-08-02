@@ -19,18 +19,19 @@ else if (!(name in root)) /* Browser/WebWorker/.. */
     /* module factory */        function ModuleFactory__Formal(undef) {
 "use strict";
 
-var HAS = Object.prototype.hasOwnProperty, toString = Object.prototype.toString,
+var HAS = Object.prototype.hasOwnProperty,
+    toString = Object.prototype.toString,
     ESC_RE = /[.*+?^${}()|[\]\\]/g,
     EMAIL_RE = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
     URL_RE = new RegExp('^(?!mailto:)(?:(?:http|https|ftp)://)(?:\\S+(?::\\S*)?@)?(?:(?:(?:[1-9]\\d?|1\\d\\d|2[01]\\d|22[0-3])(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}(?:\\.(?:[0-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-4]))|(?:(?:[a-z\\u00a1-\\uffff0-9]+-?)*[a-z\\u00a1-\\uffff0-9]+)(?:\\.(?:[a-z\\u00a1-\\uffff0-9]+-?)*[a-z\\u00a1-\\uffff0-9]+)*(?:\\.(?:[a-z\\u00a1-\\uffff]{2,})))|localhost)(?::\\d{2,5})?(?:(/|\\?|#)[^\\s]*)?$','i');
 
-function is_string(x)
-{
-    return ('string' === typeof(x)) || ('[object String]' === toString.call(x));
-}
 function is_numeric(x)
 {
     return !isNaN(+x);
+}
+function is_string(x)
+{
+    return ('string' === typeof(x)) || ('[object String]' === toString.call(x));
 }
 function is_array(x)
 {
@@ -38,7 +39,7 @@ function is_array(x)
 }
 function is_object(x)
 {
-    return ('[object Object]' === toString.call(x));
+    return ('[object Object]' === toString.call(x)) && ('function' === typeof x.constructor) && ('Object' === x.constructor.name);
 }
 function is_callable(x)
 {
@@ -295,7 +296,7 @@ class FormalType
     }
 
     async t_fields(v, k, m) {
-        if (!is_object(v)) return v;
+        if (!is_object(v) && !is_array(v)) return v;
         var SEPARATOR = m.option('SEPARATOR'), field, type;
         for (field in this.inp)
         {
@@ -409,7 +410,7 @@ class FormalValidator
     }
 
     async v_and(v, k, m, missingValue) {
-        var valid = await this.inp[0].exec(v, k, m, missingValue) && await this.inp[1].exec(v, k, m, missingValue);
+        var valid = (await this.inp[0].exec(v, k, m, missingValue)) && (await this.inp[1].exec(v, k, m, missingValue));
         return valid;
     }
 
@@ -470,19 +471,19 @@ class FormalValidator
         var valid = true;
         if (!missingValue)
         {
-            valid = await this.inp.exec(v, k, m);
+            valid = await this.inp.exec(v, k, m, false);
         }
         return valid;
     }
 
     v_required(v, k, m, missingValue) {
-        var valid = !missingValue && (null != v);
+        var valid = !missingValue && !is_null(v);
         if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', '') : "\""+k+"\" is required!");
         return valid;
     }
 
     async v_fields(v, k, m, missingValue) {
-        if (!is_object(v)) return false;
+        if (!is_object(v) && !is_array(v)) return false;
         var SEPARATOR = m.option('SEPARATOR'), field, validator;
         for (field in this.inp)
         {
@@ -1090,12 +1091,14 @@ class Formal
                 {
                     KEY_ = root.concat(key);
                     KEY = KEY_.join(SEPARATOR);
+                    err = null;
                     try {
                         valid = await validator.exec(null, KEY, this, true);
                     } catch (e) {
                         if (e instanceof FormalException)
                         {
                             valid = false;
+                            err = e.message;
                         }
                         else
                         {
@@ -1104,7 +1107,7 @@ class Formal
                     }
                     if (!valid)
                     {
-                        this.err.push(new FormalError(this.option('missing_value_msg').replace('{key}', KEY).replace('{args}', ''), KEY_));
+                        this.err.push(new FormalError(empty(err) ? this.option('missing_value_msg').replace('{key}', KEY).replace('{args}', '') : err, KEY_));
                     }
                     return;
                 }
