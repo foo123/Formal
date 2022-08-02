@@ -720,6 +720,14 @@ class Formal
 {
     static VERSION = "1.0.0";
 
+    // export these
+    static Exception = FormalException;
+    static Field = FormalField;
+    static DateTime = FormalDateTime;
+    static Type = FormalType;
+    static Validator = FormalValidator;
+    static Error = FormalError;
+
     static field(field) {
         return new FormalField(field);
     }
