@@ -1,0 +1,59 @@
+{
+    "foo": "",
+    "moo": [
+        {
+            "choo": 1
+        },
+        {
+            "choo": 2
+        },
+        {
+            "choo": 3
+        }
+    ],
+    "koo": [
+        "",
+        "",
+        ""
+    ],
+    "num": [
+        "0.1",
+        "1.2"
+    ],
+    "date": [
+        "2012-11-02",
+        "20-11-02"
+    ]
+}
+{
+    "foo": "bar",
+    "moo": [
+        {
+            "choo": 1,
+            "foo": "bar"
+        },
+        {
+            "choo": 2,
+            "foo": "bar"
+        },
+        {
+            "choo": 3,
+            "foo": "bar"
+        }
+    ],
+    "koo": [
+        "bar",
+        "bar",
+        "bar"
+    ],
+    "num": [
+        0.1,
+        1
+    ],
+    "date": [
+        "2012-11-02",
+        "20-11-02"
+    ]
+}
+"date.1" should match Y-m-d !
+"date.0" must be equal to "date.1"!

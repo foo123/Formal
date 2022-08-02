@@ -456,6 +456,13 @@ class FormalValidator
         return $valid;
     }
 
+    public function v_required($v, $k, $m, $missingValue)
+    {
+        $valid = !$missingValue && !is_null($v);
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, ''), $this->msg) : "\"$k\" is required!");
+        return $valid;
+    }
+
     public function v_fields($v, $k, $m, $missingValue)
     {
         if (!is_array($v)) return false;
@@ -513,7 +520,7 @@ class FormalValidator
 
     public function v_empty($v, $k, $m, $missingValue)
     {
-        $valid = $missingValue || (is_array($v) ? !count($v) : (is_string($v) && strlen(trim($v)) && is_file($v) ? !filesize($v) : !strlen(trim((string)$v))));
+        $valid = $missingValue || is_null($v) || (is_array($v) ? !count($v) : (is_string($v) && strlen(trim($v)) && is_file($v) ? !filesize($v) : !strlen(trim((string)$v))));
         if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, ''), $this->msg) : "\"$k\" must be empty!");
         return $valid;
     }
@@ -799,10 +806,10 @@ class Formal
 
     public function process($data)
     {
-        $this->data = null;
-        $this->err = array();
         $WILDCARD = $this->option('WILDCARD');
         $SEPARATOR = $this->option('SEPARATOR');
+        $this->data = null;
+        $this->err = array();
         $data = $this->doMergeDefaults($data, $this->option('defaults'), $WILDCARD, $SEPARATOR);
         $data = $this->doTypecast($data, $this->option('typecasters'), array(), array(), $WILDCARD, $SEPARATOR);
         $this->data = $data;
@@ -1021,14 +1028,7 @@ class Formal
 
     private function doTypecast($data, $typecaster, $key = array(), $root = array(), $WILDCARD = '*', $SEPARATOR = '.')
     {
-        if (is_array($typecaster))
-        {
-            foreach ($typecaster as $k => $t)
-            {
-                $data = $this->doTypecast($data, $t, empty($key) ? explode($SEPARATOR, $k) : array_merge($key, explode($SEPARATOR, $k)), $root, $WILDCARD, $SEPARATOR);
-            }
-        }
-        elseif ($typecaster instanceof FormalType)
+        if ($typecaster instanceof FormalType)
         {
             $n = count($key); $i = 0;
             if ($i < $n)
@@ -1076,20 +1076,20 @@ class Formal
                 $data = $typecaster->exec($data, $KEY, $this);
             }
         }
+        elseif (is_array($typecaster))
+        {
+            foreach ($typecaster as $k => $t)
+            {
+                $data = $this->doTypecast($data, $t, empty($key) ? explode($SEPARATOR, $k) : array_merge($key, explode($SEPARATOR, $k)), $root, $WILDCARD, $SEPARATOR);
+            }
+        }
         return $data;
     }
 
     private function doValidate($data, $validator, $key = array(), $root = array(), $WILDCARD = '*', $SEPARATOR = '.')
     {
         if ($this->option('break_on_first_error') && !empty($this->err)) return;
-        if (is_array($validator))
-        {
-            foreach ($validator as $k => $v)
-            {
-                $this->doValidate($data, $v, empty($key) ? explode($SEPARATOR, $k) : array_merge($key, explode($SEPARATOR, $k)), $root, $WILDCARD, $SEPARATOR);
-            }
-        }
-        elseif ($validator instanceof FormalValidator)
+        if ($validator instanceof FormalValidator)
         {
             $n = count($key); $i = 0;
             while ($i < $n)
@@ -1145,7 +1145,7 @@ class Formal
             $KEY = implode($SEPARATOR, $KEY_);
             $err = null;
             try {
-                $valid = $validator->exec($data, $KEY, $this);
+                $valid = $validator->exec($data, $KEY, $this, false);
             } catch (FormalException $e) {
                 $valid = false;
                 $err = $e->getMessage();
@@ -1153,6 +1153,13 @@ class Formal
             if (!$valid)
             {
                 $this->err[] = new FormalError(empty($err) ? str_replace(array('{key}', '{args}'), array($KEY, ''), $this->option('invalid_value_msg')) : $err, $KEY_);
+            }
+        }
+        elseif (is_array($validator))
+        {
+            foreach ($validator as $k => $v)
+            {
+                $this->doValidate($data, $v, empty($key) ? explode($SEPARATOR, $k) : array_merge($key, explode($SEPARATOR, $k)), $root, $WILDCARD, $SEPARATOR);
             }
         }
     }

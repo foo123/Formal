@@ -182,6 +182,9 @@ Formal::typecast(function($val, $key, $formalInstance) {
 // optional validator, only if value is not missing
 Formal::validate('optional', $requiredValidator);
 
+// required validator, fails if value is missing
+Formal::validate('required');
+
 // fields validator
 Formal::validate('fields', ['field1' => $validator1, 'field2' => $validator2, ..], $errMsg = null);
 
@@ -194,10 +197,10 @@ Formal::validate('object', $args = null, $errMsg = null);
 // is array validator
 Formal::validate('array', $args = null, $errMsg = null);
 
-// is file validator
+// is file validator (PHP only)
 Formal::validate('file', $args = null, $errMsg = null);
 
-// mime-type validator
+// mime-type validator (PHP only)
 Formal::validate('mimetype', ['type1', 'type2', ..], $errMsg = null);
 
 // is empty validator
@@ -215,10 +218,10 @@ Formal::validate('maxlen', $maxLen, $errMsg = null);
 // min chars validator
 Formal::validate('minlen', $minLen, $errMsg = null);
 
-// max file size validator
+// max file size validator (PHP only)
 Formal::validate('maxsize', $maxSize, $errMsg = null);
 
-// min file size validator
+// min file size validator (PHP only)
 Formal::validate('minsize', $minSize, $errMsg = null);
 
 // equals validator
