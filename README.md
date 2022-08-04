@@ -152,12 +152,6 @@ date.1
 // composite typecaster
 Formal::typecast('composite', [$typecaster1, $typecaster2, ..]);
 
-// fields typecaster
-Formal::typecast('fields', ['field1' => $typecaster1, 'field2' => $typecaster2, ..]);
-
-// default value typecaster
-Formal::typecast('default', $defaultValue);
-
 // boolean typecaster
 Formal::typecast('bool');
 
@@ -201,83 +195,77 @@ Formal::typecast(function($val, $key, $formalInstance) {
 // optional validator, only if value is not missing
 Formal::validate('optional', $requiredValidator);
 
-// required validator, fails if value is missing
+// required validator, fails if value is missing or null
 Formal::validate('required');
 
-// fields validator
-Formal::validate('fields', ['field1' => $validator1, 'field2' => $validator2, ..], $errMsg = null);
-
 // is numeric validator
-Formal::validate('numeric', $args = null, $errMsg = null);
+Formal::validate('numeric');
 
 // is object validator
-Formal::validate('object', $args = null, $errMsg = null);
+Formal::validate('object');
 
 // is array validator
-Formal::validate('array', $args = null, $errMsg = null);
+Formal::validate('array';
 
-// is file validator (PHP only)
-Formal::validate('file', $args = null, $errMsg = null);
-
-// mime-type validator (PHP only)
-Formal::validate('mimetype', ['type1', 'type2', ..], $errMsg = null);
+// is file validator
+Formal::validate('file');
 
 // is empty validator
-Formal::validate('empty', $args = null, $errMsg = null);
+Formal::validate('empty');
 
 // max items validator
-Formal::validate('maxcount', $maxCount, $errMsg = null);
+Formal::validate('maxitems', $maxCount);
 
 // min items validator
-Formal::validate('mincount', $minCount, $errMsg = null);
+Formal::validate('minitems', $minCount);
 
 // max chars validator
-Formal::validate('maxlen', $maxLen, $errMsg = null);
+Formal::validate('maxchars', $maxLen);
 
 // min chars validator
-Formal::validate('minlen', $minLen, $errMsg = null);
+Formal::validate('minchars', $minLen);
 
-// max file size validator (PHP only)
-Formal::validate('maxsize', $maxSize, $errMsg = null);
+// max file size validator
+Formal::validate('maxsize', $maxSize);
 
-// min file size validator (PHP only)
-Formal::validate('minsize', $minSize, $errMsg = null);
+// min file size validator
+Formal::validate('minsize', $minSize);
 
 // equals validator
-Formal::validate('eq', $otherValueOrField, $errMsg = null);
+Formal::validate('eq', $otherValueOrField);
 
 // not equals validator
-Formal::validate('neq', $otherValueOrField, $errMsg = null);
+Formal::validate('neq', $otherValueOrField);
 
 // greater than validator
-Formal::validate('gt', $otherValueOrField, $errMsg = null);
+Formal::validate('gt', $otherValueOrField);
 
 // greater than or equal validator
-Formal::validate('gte', $otherValueOrField, $errMsg = null);
+Formal::validate('gte', $otherValueOrField);
 
 // less than validator
-Formal::validate('lt', $otherValueOrField, $errMsg = null);
+Formal::validate('lt', $otherValueOrField);
 
 // less than or equal validator
-Formal::validate('lte', $otherValueOrField, $errMsg = null);
+Formal::validate('lte', $otherValueOrField);
 
 // between values (included) validator
-Formal::validate('between', [$minValueOrField, $maxValueOrField], $errMsg = null);
+Formal::validate('between', [$minValueOrField, $maxValueOrField]);
 
 // in array of values validator
-Formal::validate('in', [$val1, $val2, ..], $errMsg = null);
+Formal::validate('in', [$val1, $val2, ..]);
 
 // not in array of values validator
-Formal::validate('not_in', [$val1, $val2, ..], $errMsg = null);
+Formal::validate('not_in', [$val1, $val2, ..]);
 
 // match pattern validator
-Formal::validate('match', $pattern, $errMsg = null);
+Formal::validate('match', $pattern);
 
 // match valid email pattern validator
-Formal::validate('email', $args = null, $errMsg = null);
+Formal::validate('email');
 
 // match valid url pattern validator
-Formal::validate('url', $args = null, $errMsg = null);
+Formal::validate('url');
 
 // not validator
 $validator->_not_();

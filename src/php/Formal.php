@@ -253,18 +253,15 @@ class FormalType
 
     public function t_composite($v, $k, $m)
     {
-        $types = $this->inp;
-        $l = count($types);
-        $i = 0;
-        while ($i < $l)
+        $types = (array)$this->inp;
+        for ($i=0,$l=count($types); $i<$l; ++$i)
         {
             $v = $types[$i]->exec($v, $k, $m);
-            ++$i;
         }
         return $v;
     }
 
-    public function t_fields($v, $k, $m)
+    /*public function t_fields($v, $k, $m)
     {
         if (!is_array($v)) return $v;
         $SEPARATOR = $m->option('SEPARATOR');
@@ -283,7 +280,7 @@ class FormalType
             $v = $defaultValue;
         }
         return $v;
-    }
+    }*/
 
     public function t_bool($v, $k, $m)
     {
@@ -351,6 +348,11 @@ class FormalValidator
     public $inp = null;
     public $msg = null;
 
+    public static function strlen($s)
+    {
+        return function_exists('mb_strlen') ? mb_strlen((string)$s, 'UTF-8') : strlen((string)$s);
+    }
+
     public static function _($validator, $args = null, $msg = null)
     {
         return new static($validator, $args, $msg);
@@ -400,7 +402,7 @@ class FormalValidator
         $valid = true;
         if (is_callable($this->func))
         {
-            $valid = call_user_func($this->func, $v, $k, $m, $missingValue);
+            $valid = (bool)call_user_func($this->func, $v, $k, $m, $missingValue);
         }
         return $valid;
     }
@@ -463,7 +465,7 @@ class FormalValidator
         return $valid;
     }
 
-    public function v_fields($v, $k, $m, $missingValue)
+    /*public function v_fields($v, $k, $m, $missingValue)
     {
         if (!is_array($v)) return false;
         $SEPARATOR = $m->option('SEPARATOR');
@@ -481,7 +483,7 @@ class FormalValidator
             }
         }
         return true;
-    }
+    }*/
 
     public function v_numeric($v, $k, $m, $missingValue)
     {
@@ -506,63 +508,68 @@ class FormalValidator
 
     public function v_file($v, $k, $m, $missingValue)
     {
-        $valid = is_file($v);
+        $valid = is_file((string)$v);
         if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, ''), $this->msg) : "\"$k\" must be a file!");
-        return $valid;
-    }
-
-    public function v_mimetype($v, $k, $m, $missingValue)
-    {
-        $valid = in_array(mime_content_type($v), (array)$this->inp);
-        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, implode(',', (array)$this->inp)), $this->msg) : "\"$k\" mime-type must be one of [".implode(',', (array)$this->inp)."]!");
         return $valid;
     }
 
     public function v_empty($v, $k, $m, $missingValue)
     {
-        $valid = $missingValue || is_null($v) || (is_array($v) ? !count($v) : (is_string($v) && strlen(trim($v)) && is_file($v) ? !filesize($v) : !strlen(trim((string)$v))));
+        $valid = $missingValue || is_null($v) || (is_array($v) ? !count($v) : !strlen(trim((string)$v)));
         if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, ''), $this->msg) : "\"$k\" must be empty!");
         return $valid;
     }
 
-    public function v_maxcount($v, $k, $m, $missingValue)
+    public function v_maxitems($v, $k, $m, $missingValue)
     {
         $valid = count($v) <= $this->inp;
         if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at most {$this->inp} items!");
         return $valid;
     }
 
-    public function v_mincount($v, $k, $m, $missingValue)
+    public function v_minitems($v, $k, $m, $missingValue)
     {
         $valid = count($v) >= $this->inp;
         if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at least {$this->inp} items!");
         return $valid;
     }
 
-    public function v_maxlen($v, $k, $m, $missingValue)
+    public function v_maxchars($v, $k, $m, $missingValue)
     {
-        $valid = strlen($v) <= $this->inp;
+        $valid = static::strlen($v) <= $this->inp;
         if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at most {$this->inp} characters!");
         return $valid;
     }
 
-    public function v_minlen($v, $k, $m, $missingValue)
+    public function v_minchars($v, $k, $m, $missingValue)
     {
-        $valid = strlen($v) >= $this->inp;
+        $valid = static::strlen($v) >= $this->inp;
         if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at least {$this->inp} characters!");
         return $valid;
     }
 
     public function v_maxsize($v, $k, $m, $missingValue)
     {
-        $valid = filesize($v) <= $this->inp;
+        $fs = false;
+        try {
+            $fs = @filesize((string)$v);
+        } catch (Exception $e) {
+            $fs = false;
+        }
+        $valid = false === $fs ? false : $fs <= $this->inp;
         if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at most {$this->inp} bytes!");
         return $valid;
     }
 
     public function v_minsize($v, $k, $m, $missingValue)
     {
-        $valid = filesize($v) >= $this->inp;
+        $fs = false;
+        try {
+            $fs = @filesize((string)$v);
+        } catch (Exception $e) {
+            $fs = false;
+        }
+        $valid = false === $fs ? false : $fs >= $this->inp;
         if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at least {$this->inp} bytes!");
         return $valid;
     }
@@ -944,7 +951,7 @@ class Formal
             {
                 foreach ($k as $kk)
                 {
-                    $o[$kk] = $defaults;
+                    $o[$kk] = $defaults; // clone
                 }
             }
             else
@@ -958,7 +965,7 @@ class Formal
 
     private function doMergeDefaults($data, $defaults, $WILDCARD = '*', $SEPARATOR = '.')
     {
-        if (is_array($data))
+        if (is_array($data) && is_array($defaults))
         {
             foreach ($defaults as $key => $def)
             {
@@ -1013,15 +1020,19 @@ class Formal
                         }
                         elseif (is_null($data[$key]) || (is_string($data[$key]) && !strlen(trim($data[$key]))))
                         {
-                            $data[$key] = $def;
+                            $data[$key] = $def; // clone
                         }
                     }
                     else
                     {
-                        $data[$key] = $def;
+                        $data[$key] = $def; // clone
                     }
                 }
             }
+        }
+        elseif (is_null($data) || (is_string($data) && !strlen(trim($data))))
+        {
+            $data = $defaults; // clone
         }
         return $data;
     }

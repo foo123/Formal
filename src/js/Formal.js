@@ -23,7 +23,10 @@ var HAS = Object.prototype.hasOwnProperty,
     toString = Object.prototype.toString,
     ESC_RE = /[.*+?^${}()|[\]\\]/g,
     EMAIL_RE = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
-    URL_RE = new RegExp('^(?!mailto:)(?:(?:http|https|ftp)://)(?:\\S+(?::\\S*)?@)?(?:(?:(?:[1-9]\\d?|1\\d\\d|2[01]\\d|22[0-3])(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}(?:\\.(?:[0-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-4]))|(?:(?:[a-z\\u00a1-\\uffff0-9]+-?)*[a-z\\u00a1-\\uffff0-9]+)(?:\\.(?:[a-z\\u00a1-\\uffff0-9]+-?)*[a-z\\u00a1-\\uffff0-9]+)*(?:\\.(?:[a-z\\u00a1-\\uffff]{2,})))|localhost)(?::\\d{2,5})?(?:(/|\\?|#)[^\\s]*)?$','i');
+    URL_RE = new RegExp('^(?!mailto:)(?:(?:http|https|ftp)://)(?:\\S+(?::\\S*)?@)?(?:(?:(?:[1-9]\\d?|1\\d\\d|2[01]\\d|22[0-3])(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}(?:\\.(?:[0-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-4]))|(?:(?:[a-z\\u00a1-\\uffff0-9]+-?)*[a-z\\u00a1-\\uffff0-9]+)(?:\\.(?:[a-z\\u00a1-\\uffff0-9]+-?)*[a-z\\u00a1-\\uffff0-9]+)*(?:\\.(?:[a-z\\u00a1-\\uffff]{2,})))|localhost)(?::\\d{2,5})?(?:(/|\\?|#)[^\\s]*)?$','i'),
+    isNode = ("undefined" !== typeof global) && ("[object global]" === toString.call(global)),
+    isBrowser = ("undefined" !== typeof window) && ("[object Window]" === toString.call(window))
+;
 
 function is_numeric(x)
 {
@@ -40,6 +43,38 @@ function is_array(x)
 function is_object(x)
 {
     return ('[object Object]' === toString.call(x)) && ('function' === typeof x.constructor) && ('Object' === x.constructor.name);
+}
+async function is_file(x)
+{
+    if (isNode)
+    {
+        return await new Promise(function(resolve) {
+            require('fs').lstat(String(x), function(err, stats) {
+                resolve(err || !stats ? false : stats.isFile());
+            });
+        });
+    }
+    else if (isBrowser)
+    {
+        return ('File' in window) && (x instanceof File);
+    }
+    return false;
+}
+async function filesize(x)
+{
+    if (isNode)
+    {
+        return await new Promise(function(resolve) {
+            require('fs').lstat(String(x), function(err, stats) {
+                resolve(err || !stats ? false : stats.size);
+            });
+        });
+    }
+    else if (isBrowser)
+    {
+        return ('File' in window) && (x instanceof File) ? x.size : false;
+    }
+    return false;
 }
 function is_callable(x)
 {
@@ -286,16 +321,15 @@ class FormalType
     }
 
     async t_composite(v, k, m) {
-        var types = this.inp, l = types.length, i = 0;
-        while (i < l)
+        var types = array(this.inp), l = types.length, i = 0;
+        for (i=0; i<l; ++i)
         {
             v = await types[i].exec(v, k, m);
-            ++i;
         }
         return v;
     }
 
-    async t_fields(v, k, m) {
+    /*async t_fields(v, k, m) {
         if (!is_object(v) && !is_array(v)) return v;
         var SEPARATOR = m.option('SEPARATOR'), field, type;
         for (field in this.inp)
@@ -314,7 +348,7 @@ class FormalType
             v = defaultValue;
         }
         return v;
-    }
+    }*/
 
     t_bool(v, k, m) {
         // handle string representation of booleans as well
@@ -404,7 +438,7 @@ class FormalValidator
         var valid = true;
         if (is_callable(this.func))
         {
-            valid = await this.func(v, k, m, missingValue);
+            valid = !!(await this.func(v, k, m, missingValue));
         }
         return valid;
     }
@@ -482,7 +516,7 @@ class FormalValidator
         return valid;
     }
 
-    async v_fields(v, k, m, missingValue) {
+    /*async v_fields(v, k, m, missingValue) {
         if (!is_object(v) && !is_array(v)) return false;
         var SEPARATOR = m.option('SEPARATOR'), field, validator;
         for (field in this.inp)
@@ -501,7 +535,7 @@ class FormalValidator
             }
         }
         return true;
-    }
+    }*/
 
     v_numeric(v, k, m, missingValue) {
         var valid = is_numeric(v);
@@ -521,34 +555,56 @@ class FormalValidator
         return valid;
     }
 
+    async v_file(v, k, m, missingValue) {
+        var valid = await is_file(v);
+        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', '') : "\""+k+"\" must be a file!");
+        return valid;
+    }
+
     v_empty(v, k, m, missingValue) {
-        var valid = missingValue || null == v || (is_array(v) || is_object(v) ? !Object.keys(v).length : !String(v).trim().length);
+        var valid = missingValue || is_null(v) || (is_array(v) ? !v.length : (is_object(v) ? !Object.keys(v).length : !String(v).trim().length));
         if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', '') : "\""+k+"\" must be empty!");
         return valid;
     }
 
-    v_maxcount(v, k, m, missingValue) {
+    v_maxitems(v, k, m, missingValue) {
         var valid = v.length <= this.inp;
         if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at most "+this.inp+" items!");
         return valid;
     }
 
-    v_mincount(v, k, m, missingValue) {
+    v_minitems(v, k, m, missingValue) {
         var valid = v.length >= this.inp;
         if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at least "+this.inp+" items!");
         return valid;
     }
 
-    v_maxlen(v, k, m, missingValue) {
+    v_maxchars(v, k, m, missingValue) {
         var valid = v.length <= this.inp;
         if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at most "+this.inp+" characters!");
         return valid;
     }
 
-    v_minlen(v, k, m, missingValue) {
+    v_minchars(v, k, m, missingValue) {
         var valid = v.length >= this.inp;
         if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at least "+this.inp+" characters!");
-        return $valid;
+        return valid;
+    }
+
+    async v_maxsize(v, k, m, missingValue) {
+        var fs = false, valid = false;
+        fs = await filesize(String(v));
+        valid = false === fs ? false : fs <= this.inp;
+        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at most "+this.inp+" bytes!");
+        return valid;
+    }
+
+    async v_minsize(v, k, m, missingValue) {
+        var fs = false, valid = false;
+        fs = await filesize(String(v));
+        valid = false === fs ? false : fs >= this.inp;
+        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at least "+this.inp+" bytes!");
+        return valid;
     }
 
     v_eq(v, k, m, missingValue) {
@@ -671,7 +727,7 @@ class FormalValidator
         }
         valid = -1 === array(val).indexOf(v);
         if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', valm) : "\""+k+"\" must not be one of "+valm+"!");
-        return $valid;
+        return valid;
     }
 
     v_match(v, k, m, missingValue) {
@@ -901,7 +957,7 @@ class Formal
             if (is_array(k))
             {
                 k.forEach(function(kk) {
-                    o[kk] = clone(defaults);
+                    o[kk] = clone(defaults); // clone
                 });
             }
             else
@@ -914,7 +970,7 @@ class Formal
     }
 
     async doMergeDefaults(data, defaults, WILDCARD = '*', SEPARATOR = '.') {
-        if (is_array(data) || is_object(data))
+        if ((is_array(data) || is_object(data)) && (is_array(defaults) || is_object(defaults)))
         {
             var keys, key, def, k, kk, n, o, doMerge, i, ok;
             for (key in defaults)
@@ -972,15 +1028,19 @@ class Formal
                         }
                         else if (is_null(data[key]) || (is_string(data[key]) && !data[key].trim().length))
                         {
-                            data[key] = def;
+                            data[key] = clone(def); // clone
                         }
                     }
                     else
                     {
-                        data[key] = def;
+                        data[key] = clone(def); // clone
                     }
                 }
             }
+        }
+        else if (is_null(data[key]) || (is_string(data) && !data.trim().length))
+        {
+            data = clone(defaults); // clone
         }
         return data;
     }
