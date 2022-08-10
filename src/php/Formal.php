@@ -3,7 +3,7 @@
 *   Formal
 *   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 *
-*   @version 1.0.0
+*   @version 1.1.0
 *   https://github.com/foo123/Formal
 *
 **/
@@ -231,7 +231,7 @@ class FormalType
         else
         {
             $method = is_string($type) ? 't_' . strtolower(trim((string)$type)) : null;
-            $this->func = $method && method_exists($this, $method) ? array($this, $method) : (is_callable($type) ? $type : null);
+            $this->func = $method && method_exists($this, $method) ? $method : (is_callable($type) ? $type : null);
             $this->inp = $args;
         }
     }
@@ -244,9 +244,13 @@ class FormalType
 
     public function exec($v, $k = null, $m = null)
     {
-        if (is_callable($this->func))
+        if (is_string($this->func))
         {
-            $v = call_user_func($this->func, $v, $k, $m);
+            $v = call_user_func(array($this, $this->func), $v, $k, $m);
+        }
+        elseif (is_callable($this->func))
+        {
+            $v = call_user_func($this->func, $v, $this->inp, $k, $m);
         }
         return $v;
     }
@@ -369,7 +373,7 @@ class FormalValidator
         else
         {
             $method = is_string($validator) ? 'v_' . strtolower(trim((string)$validator)) : null;
-            $this->func = $method && method_exists($this, $method) ? array($this, $method) : (is_callable($validator) ? $validator : null);
+            $this->func = $method && method_exists($this, $method) ? $method : (is_callable($validator) ? $validator : null);
             $this->inp = $args;
             $this->msg = $msg;
         }
@@ -392,17 +396,21 @@ class FormalValidator
         return new static('or', array($this, $validator));
     }
 
-    public function _not_()
+    public function _not_($msg = null)
     {
-        return new static('not', $this);
+        return new static('not', $this, $msg);
     }
 
     public function exec($v, $k = null, $m = null, $missingValue = false)
     {
         $valid = true;
-        if (is_callable($this->func))
+        if (is_string($this->func))
         {
-            $valid = (bool)call_user_func($this->func, $v, $k, $m, $missingValue);
+            $valid = (bool)call_user_func(array($this, $this->func), $v, $k, $m, $missingValue);
+        }
+        elseif (is_callable($this->func))
+        {
+            $valid = (bool)call_user_func($this->func, $v, $this->inp, $k, $m, $missingValue, $this->msg);
         }
         return $valid;
     }
@@ -445,6 +453,7 @@ class FormalValidator
         } catch (FormalException $e) {
             $valid = true;
         }
+        if (!$valid && !empty($this->msg)) throw new FormalException(str_replace(array('{key}', '{args}'), array($k, ''), $this->msg));
         return $valid;
     }
 
@@ -757,7 +766,7 @@ class FormalError
 
 class Formal
 {
-    const VERSION = "1.0.0";
+    const VERSION = "1.1.0";
 
     public static function field($field)
     {
@@ -817,6 +826,7 @@ class Formal
         $SEPARATOR = $this->option('SEPARATOR');
         $this->data = null;
         $this->err = array();
+        //$data = $this->clone($data);
         $data = $this->doMergeDefaults($data, $this->option('defaults'), $WILDCARD, $SEPARATOR);
         $data = $this->doTypecast($data, $this->option('typecasters'), array(), array(), $WILDCARD, $SEPARATOR);
         $this->data = $data;
@@ -939,6 +949,20 @@ class Formal
         return $default;
     }
 
+    private function clone($o)
+    {
+        if (is_array($o))
+        {
+            $oo = array();
+            foreach ($o as $k => $v) $oo[$k] = $this->clone($v);
+            return $oo;
+        }
+        else
+        {
+            return $o;
+        }
+    }
+
     private function doMergeKeys($keys, $def)
     {
         $n = count($keys);
@@ -951,7 +975,7 @@ class Formal
             {
                 foreach ($k as $kk)
                 {
-                    $o[$kk] = $defaults; // clone
+                    $o[$kk] = $this->clone($defaults);
                 }
             }
             else
@@ -1020,19 +1044,19 @@ class Formal
                         }
                         elseif (is_null($data[$key]) || (is_string($data[$key]) && !strlen(trim($data[$key]))))
                         {
-                            $data[$key] = $def; // clone
+                            $data[$key] = $this->clone($def);
                         }
                     }
                     else
                     {
-                        $data[$key] = $def; // clone
+                        $data[$key] = $this->clone($def);
                     }
                 }
             }
         }
         elseif (is_null($data) || (is_string($data) && !strlen(trim($data))))
         {
-            $data = $defaults; // clone
+            $data = $this->clone($defaults);
         }
         return $data;
     }

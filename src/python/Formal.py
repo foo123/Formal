@@ -2,7 +2,7 @@
 #   Formal
 #   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 #
-#   @version 1.0.0
+#   @version 1.1.0
 #   https://github.com/foo123/Formal
 #
 ##
@@ -252,7 +252,7 @@ class FormalType:
         if is_string(self.func):
             v = getattr(self, self.func)(v, k, m)
         elif is_callable(self.func):
-            v = self.func(v, k, m)
+            v = self.func(v, self.inp, k, m)
         return v
 
     def t_composite(self, v, k, m):
@@ -335,15 +335,15 @@ class FormalValidator:
     def _or_(self, validator):
         return FormalValidator('or', (self, validator))
 
-    def _not_(self):
-        return FormalValidator('not', self)
+    def _not_(self, msg = None):
+        return FormalValidator('not', self, msg)
 
     def exec(self, v, k = None, m = None, missingValue = False):
         valid = True
         if is_string(self.func):
             valid = bool(getattr(self, self.func)(v, k, m, missingValue))
         elif is_callable(self.func):
-            valid = bool(self.func(v, k, m, missingValue))
+            valid = bool(self.func(v, self.inp, k, m, missingValue, self.msg))
         return valid
 
     def v_and(self, v, k, m, missingValue):
@@ -374,9 +374,10 @@ class FormalValidator:
 
     def v_not(self, v, k, m, missingValue):
         try:
-            valid = not self.inp.exec(v, k, m, missingValue)
+            valid = not (self.inp.exec(v, k, m, missingValue))
         except FormalException as e:
             valid = True
+        if (not valid) and (not empty(self.msg)): raise FormalException(self.msg.replace('{key}', k).replace('{args}', ''))
         return valid
 
     def v_optional(self, v, k, m, missingValue):
@@ -608,7 +609,7 @@ class Formal:
     Formal for Python,
     https://github.com/foo123/Formal
     """
-    VERSION = "1.0.0"
+    VERSION = "1.1.0"
 
     # export these
     Exception = FormalException

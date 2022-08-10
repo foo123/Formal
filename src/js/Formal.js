@@ -2,7 +2,7 @@
 *   Formal
 *   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 *
-*   @version 1.0.0
+*   @version 1.1.0
 *   https://github.com/foo123/Formal
 *
 **/
@@ -307,15 +307,19 @@ class FormalType
         else
         {
             var method = is_string(type) ? 't_' + String(type).trim().toLowerCase() : null;
-            this.func = method && method_exists(this, method) ? this[method].bind(this) : (is_callable(type) ? type : null);
+            this.func = method && method_exists(this, method) ? method : (is_callable(type) ? type : null);
             this.inp = args;
         }
     }
 
     async exec(v, k = null, m = null) {
-        if (is_callable(this.func))
+        if (is_string(this.func))
         {
-            v = await this.func(v, k, m);
+            v = await this[this.func](v, k, m);
+        }
+        else if (is_callable(this.func))
+        {
+            v = await this.func(v, this.inp, k, m);
         }
         return v;
     }
@@ -416,7 +420,7 @@ class FormalValidator
         else
         {
             var method = is_string(validator) ? 'v_' + String(validator).trim().toLowerCase() : null;
-            this.func = method && method_exists(this, method) ? this[method].bind(this) : (is_callable(validator) ? validator : null);
+            this.func = method && method_exists(this, method) ? method : (is_callable(validator) ? validator : null);
             this.inp = args;
             this.msg = msg;
         }
@@ -430,15 +434,19 @@ class FormalValidator
         return new FormalValidator('or', [this, validator]);
     }
 
-    _not_() {
-        return new FormalValidator('not', this);
+    _not_(msg = null) {
+        return new FormalValidator('not', this, msg);
     }
 
     async exec(v, k = null, m = null, missingValue = false) {
         var valid = true;
-        if (is_callable(this.func))
+        if (is_string(this.func))
         {
-            valid = !!(await this.func(v, k, m, missingValue));
+            valid = !!(await this[this.func](v, k, m, missingValue));
+        }
+        else if (is_callable(this.func))
+        {
+            valid = !!(await this.func(v, this.inp, k, m, missingValue, this.msg));
         }
         return valid;
     }
@@ -498,6 +506,7 @@ class FormalValidator
                 throw e;
             }
         }
+        if (!valid && !empty(this.msg)) throw new FormalException(this.msg.replace('{key}', k).replace('{args}', ''));
         return valid;
     }
 
@@ -775,7 +784,7 @@ class FormalError
 
 class Formal
 {
-    static VERSION = "1.0.0";
+    static VERSION = "1.1.0";
 
     // export these
     static Exception = FormalException;
@@ -957,7 +966,7 @@ class Formal
             if (is_array(k))
             {
                 k.forEach(function(kk) {
-                    o[kk] = clone(defaults); // clone
+                    o[kk] = clone(defaults);
                 });
             }
             else
@@ -1028,19 +1037,19 @@ class Formal
                         }
                         else if (is_null(data[key]) || (is_string(data[key]) && !data[key].trim().length))
                         {
-                            data[key] = clone(def); // clone
+                            data[key] = clone(def);
                         }
                     }
                     else
                     {
-                        data[key] = clone(def); // clone
+                        data[key] = clone(def);
                     }
                 }
             }
         }
         else if (is_null(data[key]) || (is_string(data) && !data.trim().length))
         {
-            data = clone(defaults); // clone
+            data = clone(defaults);
         }
         return data;
     }

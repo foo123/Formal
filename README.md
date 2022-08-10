@@ -3,7 +3,7 @@ Formal
 
 A simple and versatile (form) input data validation framework based on built-in and custom rules for PHP, JavaScript, Python
 
-version **1.0.0**
+version **1.1.0**
 
 ![Formal](/formal.jpg)
 
@@ -183,7 +183,7 @@ Formal::typecast('lower');
 Formal::typecast('upper');
 
 // custom typecaster
-Formal::typecast(function($val, $key, $formalInstance) {
+Formal::typecast(function($val, $args, $key, $formalInstance) {
     // typecast and return new $val
     return $val;
 }, $args = null);
@@ -268,7 +268,7 @@ Formal::validate('email');
 Formal::validate('url');
 
 // not validator
-$validator->_not_();
+$validator->_not_($errMsg = null);
 
 // $validator1 and $validator2
 $validator1->_and_($validator2);
@@ -277,7 +277,7 @@ $validator1->_and_($validator2);
 $validator1->_or_($validator2);
 
 // custom validator
-Formal::validate(function($val, $key, $formalInstance, $missingValue) {
+Formal::validate(function($val, $args, $key, $formalInstance, $missingValue, $errMsg) {
     // validate and return true or false
     // optionally you can throw FormalException with custom error message
     throw new FormalException('my custom error message');
