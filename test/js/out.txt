@@ -1,3 +1,4 @@
+Formal.VERSION 1.1.1
 {
     "foo": "",
     "moo": [
@@ -9,6 +10,20 @@
         },
         {
             "choo": 3
+        }
+    ],
+    "soo": [
+        {
+            "boo": 1,
+            "xoo": "a"
+        },
+        {
+            "boo": 2,
+            "xoo": "b"
+        },
+        {
+            "boo": 3,
+            "xoo": "c"
         }
     ],
     "koo": [
@@ -41,6 +56,20 @@
             "foo": "bar"
         }
     ],
+    "soo": [
+        {
+            "boo": 1,
+            "xoo": "a"
+        },
+        {
+            "boo": 2,
+            "xoo": "b"
+        },
+        {
+            "boo": 3,
+            "xoo": "c"
+        }
+    ],
     "koo": [
         "bar",
         "bar",
@@ -57,3 +86,25 @@
 }
 "date.1" should match Y-m-d !
 "date.0" must be equal to "date.1"!
+2
+[
+    1,
+    2,
+    3
+]
+[
+    1,
+    "a",
+    2,
+    "b",
+    3,
+    "c"
+]
+"default"
+[
+    "default",
+    "default",
+    "default"
+]
+"default"
+"default"

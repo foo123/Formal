@@ -2,7 +2,7 @@
 #   Formal
 #   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 #
-#   @version 1.1.0
+#   @version 1.1.1
 #   https://github.com/foo123/Formal
 #
 ##
@@ -49,10 +49,22 @@ def array_values(o):
     return []
 
 def array_key_exists(k, o):
-    return int(k) < len(o) if isinstance(o, (list, tuple)) else (str(k) in o if isinstance(o, dict) else False)
+    if isinstance(o, dict):
+        return (str(k) in o)
+    elif isinstance(o, (list, tuple)):
+        try:
+            k = int(k)
+        except ValueError:
+            return False
+        return 0 <= k and k < len(o)
+    return False
 
 def key_value(k, o):
-    return o[int(k)] if isinstance(o, (list, tuple)) else (o[str(k)] if isinstance(o, dict) else None)
+    if isinstance(o, dict):
+        return o[str(k)]
+    elif isinstance(o, (list, tuple)):
+        return o[int(k)]
+    return None
 
 def set_key_value(k, v, o):
     if isinstance(o, (list, tuple)):
@@ -609,7 +621,7 @@ class Formal:
     Formal for Python,
     https://github.com/foo123/Formal
     """
-    VERSION = "1.1.0"
+    VERSION = "1.1.1"
 
     # export these
     Exception = FormalException
@@ -672,12 +684,13 @@ class Formal:
         if data is None: data = self.data
         WILDCARD = self.option('WILDCARD')
         SEPARATOR = self.option('SEPARATOR')
-        is_obj_arr = isinstance(data, (list, tuple, dict))
+        is_array_result = False
+        is_result_set = False
         result = None
-        if (is_string(field) or is_numeric(field)) and is_obj_arr:
+        if (is_string(field) or is_numeric(field)) and isinstance(data, (list, tuple, dict)):
             stack = [(data, str(field))]
             while len(stack):
-                o, key = stack.pop()
+                o, key = stack.pop(0)
                 p = key.split(SEPARATOR)
                 i = 0
                 l = len(p)
@@ -685,25 +698,42 @@ class Formal:
                     k = p[i]
                     i += 1
                     if i < l:
-                        if WILDCARD == k:
-                            result = []
-                            k = SEPARATOR.join(p[i:])
-                            for kk in array_keys(o):
-                                stack.append((o, key+SEPARATOR+k))
-                            break
-                        elif array_key_exists(k, o):
-                            o = key_value(k, o)
-                        else:
-                            return _default # key does not exist
-                    else:
-                        if WILDCARD == k:
-                            result = array_values(o)
-                        elif array_key_exists(k, o):
-                            if isinstance(result, list):
-                                result.append(key_value(k, o))
+                        if isinstance(o, (list, tuple, dict)):
+                            if WILDCARD == k:
+                                is_array_result = True
+                                k = SEPARATOR.join(p[i:])
+                                for kk in array_keys(o):
+                                    stack.append((o, kk+SEPARATOR+k))
+                                break
+                            elif array_key_exists(k, o):
+                                o = key_value(k, o)
                             else:
-                                result = key_value(k, o)
-            return result
+                                break
+                        else:
+                            break
+                    else:
+                        if isinstance(o, (list, tuple, dict)):
+                            if WILDCARD == k:
+                                is_array_result = True
+                                if not is_result_set: result = []
+                                result += array_values(o)
+                                is_result_set = True
+                            elif array_key_exists(k, o):
+                                if is_array_result:
+                                    if not is_result_set: result = []
+                                    result.append(key_value(k, o))
+                                else:
+                                    result = key_value(k, o)
+                                is_result_set = True
+                            else:
+                                if is_array_result:
+                                    if not is_result_set: result = []
+                                    result.append(_default)
+                                else:
+                                    result = _default
+                                is_result_set = True
+
+            return result if is_result_set else _default
         return _default
 
     def doMergeKeys(self, keys, _def):

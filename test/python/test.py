@@ -36,6 +36,21 @@ def test():
                 {'choo' : 3},
         ],
 
+        'soo' : [
+                {
+                    'boo' : 1,
+                    'xoo' : 'a'
+                },
+                {
+                    'boo' : 2,
+                    'xoo' : 'b'
+                },
+                {
+                    'boo' : 3,
+                    'xoo' : 'c'
+                },
+        ],
+
         'koo' : [
             '',
             '',
@@ -72,5 +87,14 @@ def test():
 
     print("\n".join(map(str, err)))
 
+    print(json.dumps(formal.get('soo.1.boo', 'default', formdata), indent=4))
+    print(json.dumps(formal.get('soo.*.boo', 'default', formdata), indent=4))
+    print(json.dumps(formal.get('soo.*.*', 'default', formdata), indent=4))
+    print(json.dumps(formal.get('soo.1.koo', 'default', formdata), indent=4))
+    print(json.dumps(formal.get('soo.*.koo', 'default', formdata), indent=4))
+    print(json.dumps(formal.get('soo.koo.1', 'default', formdata), indent=4))
+    print(json.dumps(formal.get('soo.koo.*', 'default', formdata), indent=4))
 
+
+print('Formal.VERSION ' + Formal.VERSION)
 test()

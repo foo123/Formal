@@ -3,7 +3,7 @@
 *   Formal
 *   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 *
-*   @version 1.1.0
+*   @version 1.1.1
 *   https://github.com/foo123/Formal
 *
 **/
@@ -766,7 +766,7 @@ class FormalError
 
 class Formal
 {
-    const VERSION = "1.1.0";
+    const VERSION = "1.1.1";
 
     public static function field($field)
     {
@@ -794,16 +794,15 @@ class Formal
 
     public function __construct()
     {
-        $this
-            ->option('WILDCARD', '*')
-            ->option('SEPARATOR', '.')
-            ->option('break_on_first_error', false)
-            ->option('invalid_value_msg', 'Invalid Value in "{key}"!')
-            ->option('missing_value_msg', 'Missing Value in "{key}"!')
-            ->option('defaults', array())
-            ->option('typecasters', array())
-            ->option('validators', array())
-        ;
+        // some defaults
+        $this->option('WILDCARD', '*');
+        $this->option('SEPARATOR', '.');
+        $this->option('break_on_first_error', false);
+        $this->option('invalid_value_msg', 'Invalid Value in "{key}"!');
+        $this->option('missing_value_msg', 'Missing Value in "{key}"!');
+        $this->option('defaults', array());
+        $this->option('typecasters', array());
+        $this->option('validators', array());
     }
 
     public function option($key, $val = null)
@@ -845,15 +844,15 @@ class Formal
         if (null === $data) $data = $this->data;
         $WILDCARD = $this->option('WILDCARD');
         $SEPARATOR = $this->option('SEPARATOR');
-        $is_object = is_object($data);
-        $is_array = is_array($data);
+        $is_array_result = false;
+        $is_result_set = false;
         $result = null;
-        if ((is_string($field) || is_numeric($field)) && ($is_object || $is_array))
+        if ((is_string($field) || is_numeric($field)) && (is_object($data) || is_array($data)))
         {
             $stack = array(array(&$data, (string)$field));
             while (!empty($stack))
             {
-                $to_get = array_pop($stack);
+                $to_get = array_shift($stack);
                 $o =& $to_get[0];
                 $key = $to_get[1];
                 $p = explode($SEPARATOR, $key);
@@ -868,7 +867,7 @@ class Formal
                         {
                             if ($WILDCARD === $k)
                             {
-                                $result = array();
+                                $is_array_result = true;
                                 $k = implode($SEPARATOR, array_slice($p, $i));
                                 foreach (array_keys((array)$o) as $key)
                                 {
@@ -880,12 +879,16 @@ class Formal
                             {
                                 $o =& $o->{$k};
                             }
+                            else
+                            {
+                                break;
+                            }
                         }
                         elseif (is_array($o))
                         {
                             if ($WILDCARD === $k)
                             {
-                                $result = array();
+                                $is_array_result = true;
                                 $k = implode($SEPARATOR, array_slice($p, $i));
                                 foreach (array_keys($o) as $key)
                                 {
@@ -897,10 +900,14 @@ class Formal
                             {
                                 $o =& $o[$k];
                             }
+                            else
+                            {
+                                break;
+                            }
                         }
                         else
                         {
-                            return $default; // key does not exist
+                            break;
                         }
                     }
                     else
@@ -909,42 +916,82 @@ class Formal
                         {
                             if ($WILDCARD === $k)
                             {
-                                $result = array();
+                                $is_array_result = true;
+                                if (!$is_result_set) $result = array();
                                 foreach (array_keys((array)$o) as $k)
                                 {
                                     $result[] = $o->{$k};
                                 }
+                                $is_result_set = true;
                             }
                             elseif (property_exists($o, $k))
                             {
-                                if (is_array($result))
+                                if ($is_array_result)
+                                {
+                                    if (!$is_result_set) $result = array();
                                     $result[] = $o->{$k};
+                                }
                                 else
+                                {
                                     $result = $o->{$k};
+                                }
+                                $is_result_set = true;
+                            }
+                            else
+                            {
+                                if ($is_array_result)
+                                {
+                                    if (!$is_result_set) $result = array();
+                                    $result[] = $default;
+                                }
+                                else
+                                {
+                                    $result = $default;
+                                }
+                                $is_result_set = true;
                             }
                         }
                         elseif (is_array($o))
                         {
                             if ($WILDCARD === $k)
                             {
-                                $result = array();
+                                $is_array_result = true;
+                                if (!$is_result_set) $result = array();
                                 foreach (array_keys($o) as $k)
                                 {
                                     $result[] = $o[$k];
                                 }
+                                $is_result_set = true;
                             }
                             elseif (array_key_exists($k, $o))
                             {
-                                if (is_array($result))
+                                if ($is_array_result)
+                                {
+                                    if (!$is_result_set) $result = array();
                                     $result[] = $o[$k];
+                                }
                                 else
                                     $result = $o[$k];
+                                $is_result_set = true;
+                            }
+                            else
+                            {
+                                if ($is_array_result)
+                                {
+                                    if (!$is_result_set) $result = array();
+                                    $result[] = $default;
+                                }
+                                else
+                                {
+                                    $result = $default;
+                                }
+                                $is_result_set = true;
                             }
                         }
                     }
                 }
             }
-            return $result;
+            return $is_result_set ? $result : $default;
         }
         return $default;
     }

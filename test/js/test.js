@@ -16,6 +16,21 @@ async function test()
                 {'choo' : 3},
         ],
 
+        'soo' : [
+                {
+                    'boo' : 1,
+                    'xoo' : 'a'
+                },
+                {
+                    'boo' : 2,
+                    'xoo' : 'b'
+                },
+                {
+                    'boo' : 3,
+                    'xoo' : 'c'
+                },
+        ],
+
         'koo' : [
             '',
             '',
@@ -53,6 +68,15 @@ async function test()
     console.log(JSON.stringify(data, null, 4));
 
     console.log(err.join("\n"));
+
+    console.log(JSON.stringify(formal.get('soo.1.boo', 'default', formdata), null, 4));
+    console.log(JSON.stringify(formal.get('soo.*.boo', 'default', formdata), null, 4));
+    console.log(JSON.stringify(formal.get('soo.*.*', 'default', formdata), null, 4));
+    console.log(JSON.stringify(formal.get('soo.1.koo', 'default', formdata), null, 4));
+    console.log(JSON.stringify(formal.get('soo.*.koo', 'default', formdata), null, 4));
+    console.log(JSON.stringify(formal.get('soo.koo.1', 'default', formdata), null, 4));
+    console.log(JSON.stringify(formal.get('soo.koo.*', 'default', formdata), null, 4));
 }
 
+console.log('Formal.VERSION ' + Formal.VERSION);
 test();

@@ -3,7 +3,7 @@ Formal
 
 A simple and versatile (form) input data validation framework based on built-in and custom rules for PHP, JavaScript, Python
 
-version **1.1.0**
+version **1.1.1**
 
 ![Formal](/formal.jpg)
 

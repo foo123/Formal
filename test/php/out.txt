@@ -1,3 +1,4 @@
+Formal::VERSION 1.1.1
 Array
 (
     [foo] => 
@@ -16,6 +17,28 @@ Array
             [2] => Array
                 (
                     [choo] => 3
+                )
+
+        )
+
+    [soo] => Array
+        (
+            [0] => Array
+                (
+                    [boo] => 1
+                    [xoo] => a
+                )
+
+            [1] => Array
+                (
+                    [boo] => 2
+                    [xoo] => b
+                )
+
+            [2] => Array
+                (
+                    [boo] => 3
+                    [xoo] => c
                 )
 
         )
@@ -65,6 +88,28 @@ Array
 
         )
 
+    [soo] => Array
+        (
+            [0] => Array
+                (
+                    [boo] => 1
+                    [xoo] => a
+                )
+
+            [1] => Array
+                (
+                    [boo] => 2
+                    [xoo] => b
+                )
+
+            [2] => Array
+                (
+                    [boo] => 3
+                    [xoo] => c
+                )
+
+        )
+
     [koo] => Array
         (
             [0] => bar
@@ -87,3 +132,38 @@ Array
 )
 "date.1" should match Y-m-d !
 "date.0" must be equal to "date.1"!
+
+int(2)
+array(3) {
+  [0]=>
+  int(1)
+  [1]=>
+  int(2)
+  [2]=>
+  int(3)
+}
+array(6) {
+  [0]=>
+  int(1)
+  [1]=>
+  string(1) "a"
+  [2]=>
+  int(2)
+  [3]=>
+  string(1) "b"
+  [4]=>
+  int(3)
+  [5]=>
+  string(1) "c"
+}
+string(7) "default"
+array(3) {
+  [0]=>
+  string(7) "default"
+  [1]=>
+  string(7) "default"
+  [2]=>
+  string(7) "default"
+}
+string(7) "default"
+string(7) "default"

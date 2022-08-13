@@ -11,6 +11,21 @@ function test()
                 ['choo' => 3],
         ],
 
+        'soo' => [
+                [
+                    'boo' => 1,
+                    'xoo' => 'a'
+                ],
+                [
+                    'boo' => 2,
+                    'xoo' => 'b'
+                ],
+                [
+                    'boo' => 3,
+                    'xoo' => 'c'
+                ],
+        ],
+
         'koo' => [
             '',
             '',
@@ -53,7 +68,16 @@ function test()
 
     print_r($data);
 
-    echo implode("\n", $err);
+    echo implode("\n", $err) . PHP_EOL . PHP_EOL;
+
+    var_dump($formal->get('soo.1.boo', 'default', $formdata));
+    var_dump($formal->get('soo.*.boo', 'default', $formdata));
+    var_dump($formal->get('soo.*.*', 'default', $formdata));
+    var_dump($formal->get('soo.1.koo', 'default', $formdata));
+    var_dump($formal->get('soo.*.koo', 'default', $formdata));
+    var_dump($formal->get('soo.koo.1', 'default', $formdata));
+    var_dump($formal->get('soo.koo.*', 'default', $formdata));
 }
 
+echo ('Formal::VERSION ' . Formal::VERSION . PHP_EOL);
 test();

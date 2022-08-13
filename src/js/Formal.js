@@ -2,7 +2,7 @@
 *   Formal
 *   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 *
-*   @version 1.1.0
+*   @version 1.1.1
 *   https://github.com/foo123/Formal
 *
 **/
@@ -784,7 +784,7 @@ class FormalError
 
 class Formal
 {
-    static VERSION = "1.1.0";
+    static VERSION = "1.1.1";
 
     // export these
     static Exception = FormalException;
@@ -863,15 +863,18 @@ class Formal
 
     get(field, _default = null, data = null) {
         if (null == data) data = this.data;
-        var WILDCARD = this.option('WILDCARD'), SEPARATOR = this.option('SEPARATOR'),
-            is_obj = is_object(data), is_arr = is_array(data), stack, result = null,
-            to_get, o, key, p, i, l, k;
-        if ((is_string(field) || is_numeric(field)) && (is_obj || is_arr))
+        var WILDCARD = this.option('WILDCARD'),
+            SEPARATOR = this.option('SEPARATOR'),
+            is_array_result = false,
+            is_result_set = false,
+            result = null,
+            stack, to_get, o, key, p, i, l, k;
+        if ((is_string(field) || is_numeric(field)) && (is_object(data) || is_array(data)))
         {
             stack = [[data, String(field)]];
             while (stack.length)
             {
-                to_get = stack.pop();
+                to_get = stack.shift();
                 o = to_get[0];
                 key = to_get[1];
                 p = key.split(SEPARATOR);
@@ -886,7 +889,7 @@ class Formal
                         {
                             if (WILDCARD === k)
                             {
-                                result = [];
+                                is_array_result = true;
                                 k = p.slice(i).join(SEPARATOR);
                                 Object.keys(o).forEach(function(key) {
                                     stack.push([o, key+SEPARATOR+k]);
@@ -896,13 +899,17 @@ class Formal
                             else if (HAS.call(o, k))
                             {
                                 o = o[k];
+                            }
+                            else
+                            {
+                                break;
                             }
                         }
                         else if (is_array(o))
                         {
                             if (WILDCARD === k)
                             {
-                                result = [];
+                                is_array_result = true;
                                 k = p.slice(i).join(SEPARATOR);
                                 Object.keys(o).forEach(function(key) {
                                     stack.push([o, key+SEPARATOR+k]);
@@ -913,10 +920,14 @@ class Formal
                             {
                                 o = o[k];
                             }
+                            else
+                            {
+                                break;
+                            }
                         }
                         else
                         {
-                            return _default; // key does not exist
+                            break;
                         }
                     }
                     else
@@ -925,34 +936,78 @@ class Formal
                         {
                             if (WILDCARD === k)
                             {
-                                result = Object.values(o);
+                                is_array_result = true;
+                                if (!is_result_set) result = [];
+                                result.push.apply(result, Object.values(o));
+                                is_result_set = true;
                             }
                             else if (HAS.call(o, k))
                             {
-                                if (is_array(result))
+                                if (is_array_result)
+                                {
+                                    if (!is_result_set) result = [];
                                     result.push(o[k]);
+                                }
                                 else
+                                {
                                     result = o[k];
+                                }
+                                is_result_set = true;
+                            }
+                            else
+                            {
+                                if (is_array_result)
+                                {
+                                    if (!is_result_set) result = [];
+                                    result.push(_default);
+                                }
+                                else
+                                {
+                                    result = _default;
+                                }
+                                is_result_set = true;
                             }
                         }
                         else if (is_array(o))
                         {
                             if (WILDCARD === k)
                             {
-                                result = o.slice();
+                                is_array_result = true;
+                                if (!is_result_set) result = [];
+                                result.push.apply(result, o);
+                                is_result_set = true;
                             }
                             else if (HAS.call(o, k))
                             {
-                                if (is_array(result))
+                                if (is_array_result)
+                                {
+                                    if (!is_result_set) result = [];
                                     result.push(o[k]);
+                                }
                                 else
+                                {
                                     result = o[k];
+                                }
+                                is_result_set = true;
+                            }
+                            else
+                            {
+                                if (is_array_result)
+                                {
+                                    if (!is_result_set) result = [];
+                                    result.push(_default);
+                                }
+                                else
+                                {
+                                    result = _default;
+                                }
+                                is_result_set = true;
                             }
                         }
                     }
                 }
             }
-            return result;
+            return is_result_set ? result : _default;
         }
         return _default;
     }
