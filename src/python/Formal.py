@@ -2,7 +2,7 @@
 #   Formal
 #   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 #
-#   @version 1.1.1
+#   @version 1.2.0
 #   https://github.com/foo123/Formal
 #
 ##
@@ -24,6 +24,9 @@ def is_array(x):
 
 def is_object(x):
     return isinstance(x, dict)
+
+def is_array_or_object(x):
+    return isinstance(x, (list, tuple, dict))
 
 def is_file(x):
     return os.path.isfile(str(x))
@@ -621,7 +624,7 @@ class Formal:
     Formal for Python,
     https://github.com/foo123/Formal
     """
-    VERSION = "1.1.1"
+    VERSION = "1.2.0"
 
     # export these
     Exception = FormalException
@@ -750,7 +753,7 @@ class Formal:
 
     def doMergeDefaults(self, data, defaults, WILDCARD = '*', SEPARATOR = '.'):
         import json
-        if isinstance(data, (list, dict)) and isinstance(defaults, (list, dict)):
+        if is_array_or_object(data) and is_array_or_object(defaults):
             for key in array_keys(defaults):
                 _def = key_value(key, defaults)
                 kk = key.split(SEPARATOR)
@@ -781,7 +784,7 @@ class Formal:
                 else:
                     if array_key_exists(key, data):
                         data_key = key_value(key, data)
-                        if isinstance(data_key, (list, tuple, dict)) and isinstance(_def, (list, tuple, dict)):
+                        if is_array_or_object(data_key) and is_array_or_object(_def):
                             data = set_key_value(key, self.doMergeDefaults(data_key, _def, WILDCARD, SEPARATOR), data)
                         elif is_null(data_key) or (is_string(data_key) and not len(data_key.strip())):
                             data = set_key_value(key, clone(_def), data)
@@ -803,14 +806,18 @@ class Formal:
                     return data
                 elif WILDCARD == k:
                     if i < n:
-                        rk = key[i:]
-                        root = root + key[0:i-1]
-                        for ok in array_keys(data):
-                            data = set_key_value(ok, self.doTypecast(key_value(ok, data), typecaster, rk, root + [ok], WILDCARD, SEPARATOR), data)
+                        kk = array_keys(data)
+                        if len(kk):
+                            rk = key[i:]
+                            root = root + key[0:i-1]
+                            for ok in kk:
+                                data = set_key_value(ok, self.doTypecast(key_value(ok, data), typecaster, rk, root + [ok], WILDCARD, SEPARATOR), data)
                     else:
-                        root = root + key[0:i-1]
-                        for ok in array_keys(data):
-                            data = self.doTypecast(data, typecaster, [ok], root, WILDCARD, SEPARATOR)
+                        kk = array_keys(data)
+                        if len(kk):
+                            root = root + key[0:i-1]
+                            for ok in kk:
+                                data = self.doTypecast(data, typecaster, [ok], root, WILDCARD, SEPARATOR)
                     return data
                 elif array_key_exists(k, data):
                     rk = key[i:]
@@ -822,7 +829,7 @@ class Formal:
                 KEY = SEPARATOR.join(root + key)
                 data = typecaster.exec(data, KEY, self)
 
-        elif isinstance(typecaster, (list, dict)):
+        elif is_array_or_object(typecaster):
             for k in array_keys(typecaster):
                 data = self.doTypecast(data, key_value(k, typecaster), k.split(SEPARATOR) if empty(key) else key + k.split(SEPARATOR), root, WILDCARD, SEPARATOR)
 
@@ -840,14 +847,41 @@ class Formal:
                     continue
                 elif WILDCARD == k:
                     if i < n:
-                        rk = key[i:]
-                        root = root + key[0:i-1]
-                        for ok in array_keys(data):
-                            self.doValidate(key_value(ok, data), validator, rk, root + [ok], WILDCARD, SEPARATOR)
+                        kk = array_keys(data)
+                        if not len(kk):
+                            KEY_ = root + key
+                            KEY = SEPARATOR.join(KEY_)
+                            err = None
+                            try:
+                                valid = validator.exec(None, KEY, self, True)
+                            except FormalException as e:
+                                valid = False
+                                err = str(e)
+                            if not valid:
+                                self.err.append(FormalError(self.option('missing_value_msg').replace('{key}', KEY).replace('{args}', '') if empty(err) else err, KEY_))
+                            return
+                        else:
+                            rk = key[i:]
+                            root = root + key[0:i-1]
+                            for ok in kk:
+                                self.doValidate(key_value(ok, data), validator, rk, root + [ok], WILDCARD, SEPARATOR)
                     else:
-                        root = root + key[0:i-1]
-                        for ok in array_keys(data):
-                            self.doValidate(data, validator, [ok], root, WILDCARD, SEPARATOR)
+                        kk = array_keys(data)
+                        if not len(kk):
+                            KEY_ = root + key
+                            KEY = SEPARATOR.join(KEY_)
+                            err = None
+                            try:
+                                valid = validator.exec(None, KEY, self, True)
+                            except FormalException as e:
+                                valid = False
+                                err = str(e)
+                            if not valid:
+                                self.err.append(FormalError(self.option('missing_value_msg').replace('{key}', KEY).replace('{args}', '') if empty(err) else err, KEY_))
+                        else:
+                            root = root + key[0:i-1]
+                            for ok in kk:
+                                self.doValidate(data, validator, [ok], root, WILDCARD, SEPARATOR)
                     return
                 elif array_key_exists(k, data):
                     data = key_value(k, data)
@@ -875,7 +909,7 @@ class Formal:
             if not valid:
                 self.err.append(FormalError(self.option('invalid_value_msg').replace('{key}', KEY).replace('{args}', '') if empty(err) else err, KEY_))
 
-        elif isinstance(validator, (list, dict)):
+        elif is_array_or_object(validator):
             for k in array_keys(validator):
                 self.doValidate(data, key_value(k, validator), k.split(SEPARATOR) if empty(key) else key + k.split(SEPARATOR), root, WILDCARD, SEPARATOR)
 

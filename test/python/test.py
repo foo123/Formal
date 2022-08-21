@@ -73,8 +73,13 @@ def test():
             'moo.*.foo' : 'bar',
             'koo.*' : 'bar'
         }).option('typecasters', {
+            'koo.*.foo' : Formal.typecast('str'),
             'num.*' : Formal.typecast('composite', [Formal.typecast('float'), Formal.typecast('clamp', [0.0, 1.0])
         ])}).option('validators', {
+            'foo.*' : Formal.validate('required'),
+            'foo.*.foo' : Formal.validate('required'),
+            'moo.*.foo' : Formal.validate('required'),
+            'koo.*.foo' : Formal.validate('optional', Formal.validate('required')),
             'date.*' : Formal.validate('match', Formal.datetime('Y-m-d'), '"{key}" should match {args} !'),
             'date.0' : Formal.validate('eq', Formal.field('date.1'))
         }).process(formdata)

@@ -55,28 +55,33 @@ function test()
             'koo.*' => 'bar'
         ])
         ->option('typecasters', [
+            'koo.*.foo' => Formal::typecast('str'),
             'num.*' => Formal::typecast('composite', [Formal::typecast('float'), Formal::typecast('clamp', [0.0, 1.0])
         ])])
         ->option('validators', [
+            'foo.*' => Formal::validate('required'),
+            'foo.*.foo' => Formal::validate('required'),
+            'moo.*.foo' => Formal::validate('required'),
+            'koo.*.foo' => Formal::validate('optional', Formal::validate('required')),
             'date.*' => Formal::validate('match', Formal::datetime('Y-m-d'), '"{key}" should match {args} !'),
             'date.0' => Formal::validate('eq', Formal::field('date.1'))
         ])
         ->process($formdata);
     $err = $formal->getErrors();
 
-    print_r($formdata);
+    echo json_encode($formdata, JSON_PRETTY_PRINT) . PHP_EOL;
 
-    print_r($data);
+    echo json_encode($data, JSON_PRETTY_PRINT) . PHP_EOL;
 
-    echo implode("\n", $err) . PHP_EOL . PHP_EOL;
+    echo implode("\n", $err) . PHP_EOL;
 
-    var_dump($formal->get('soo.1.boo', 'default', $formdata));
-    var_dump($formal->get('soo.*.boo', 'default', $formdata));
-    var_dump($formal->get('soo.*.*', 'default', $formdata));
-    var_dump($formal->get('soo.1.koo', 'default', $formdata));
-    var_dump($formal->get('soo.*.koo', 'default', $formdata));
-    var_dump($formal->get('soo.koo.1', 'default', $formdata));
-    var_dump($formal->get('soo.koo.*', 'default', $formdata));
+    echo json_encode($formal->get('soo.1.boo', 'default', $formdata), JSON_PRETTY_PRINT) . PHP_EOL;
+    echo json_encode($formal->get('soo.*.boo', 'default', $formdata), JSON_PRETTY_PRINT) . PHP_EOL;
+    echo json_encode($formal->get('soo.*.*', 'default', $formdata), JSON_PRETTY_PRINT) . PHP_EOL;
+    echo json_encode($formal->get('soo.1.koo', 'default', $formdata), JSON_PRETTY_PRINT) . PHP_EOL;
+    echo json_encode($formal->get('soo.*.koo', 'default', $formdata), JSON_PRETTY_PRINT) . PHP_EOL;
+    echo json_encode($formal->get('soo.koo.1', 'default', $formdata), JSON_PRETTY_PRINT) . PHP_EOL;
+    echo json_encode($formal->get('soo.koo.*', 'default', $formdata), JSON_PRETTY_PRINT) . PHP_EOL;
 }
 
 echo ('Formal::VERSION ' . Formal::VERSION . PHP_EOL);

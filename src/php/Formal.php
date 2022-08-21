@@ -3,7 +3,7 @@
 *   Formal
 *   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 *
-*   @version 1.1.1
+*   @version 1.2.0
 *   https://github.com/foo123/Formal
 *
 **/
@@ -766,7 +766,7 @@ class FormalError
 
 class Formal
 {
-    const VERSION = "1.1.1";
+    const VERSION = "1.2.0";
 
     public static function field($field)
     {
@@ -1052,7 +1052,7 @@ class Formal
                         $k = $kk[$i];
                         if ($WILDCARD === $k)
                         {
-                            $ok = array_keys($o);
+                            $ok = is_array($o) ? array_keys($o) : array();
                             if (empty($ok))
                             {
                                 $doMerge = false;
@@ -1061,7 +1061,7 @@ class Formal
                             $keys[] = $ok;
                             $o = $o[$ok[0]];
                         }
-                        elseif (array_key_exists($k, $o))
+                        elseif (is_array($o) && array_key_exists($k, $o))
                         {
                             $keys[] = $k;
                             $o = $o[$k];
@@ -1124,24 +1124,32 @@ class Formal
                 {
                     if ($i < $n)
                     {
-                        $rk = array_slice($key, $i);
-                        $root = array_merge($root, array_slice($key, 0, $i-1));
-                        foreach (array_keys($data) as $ok)
+                        $kk = is_array($data) ? array_keys($data) : array();
+                        if (!empty($kk))
                         {
-                            $data[$ok] = $this->doTypecast($data[$ok], $typecaster, $rk, array_merge($root, array($ok)), $WILDCARD, $SEPARATOR);
+                            $rk = array_slice($key, $i);
+                            $root = array_merge($root, array_slice($key, 0, $i-1));
+                            foreach ($kk as $ok)
+                            {
+                                $data[$ok] = $this->doTypecast($data[$ok], $typecaster, $rk, array_merge($root, array($ok)), $WILDCARD, $SEPARATOR);
+                            }
                         }
                     }
                     else
                     {
-                        $root = array_merge($root, array_slice($key, 0, $i-1));
-                        foreach (array_keys($data) as $ok)
+                        $kk = is_array($data) ? array_keys($data) : array();
+                        if (!empty($kk))
                         {
-                            $data = $this->doTypecast($data, $typecaster, array($ok), $root, $WILDCARD, $SEPARATOR);
+                            $root = array_merge($root, array_slice($key, 0, $i-1));
+                            foreach ($kk as $ok)
+                            {
+                                $data = $this->doTypecast($data, $typecaster, array($ok), $root, $WILDCARD, $SEPARATOR);
+                            }
                         }
                     }
                     return $data;
                 }
-                elseif (array_key_exists($k, $data))
+                elseif (is_array($data) && array_key_exists($k, $data))
                 {
                     $rk = array_slice($key, $i);
                     $root = array_merge($root, array_slice($key, 0, $i));
@@ -1185,24 +1193,65 @@ class Formal
                 {
                     if ($i < $n)
                     {
-                        $rk = array_slice($key, $i);
-                        $root = array_merge($root, array_slice($key, 0, $i-1));
-                        foreach (array_keys($data) as $ok)
+                        $kk = is_array($data) ? array_keys($data) : array();
+                        if (empty($kk))
                         {
-                            $this->doValidate($data[$ok], $validator, $rk, array_merge($root, array($ok)), $WILDCARD, $SEPARATOR);
+                            $KEY_ = array_merge($root, $key);
+                            $KEY = implode($SEPARATOR, $KEY_);
+                            $err = null;
+                            try {
+                                $valid = $validator->exec(null, $KEY, $this, true);
+                            } catch (FormalException $e) {
+                                $valid = false;
+                                $err = $e->getMessage();
+                            }
+                            if (!$valid)
+                            {
+                                $this->err[] = new FormalError(empty($err) ? str_replace(array('{key}', '{args}'), array($KEY, ''), $this->option('missing_value_msg')) : $err, $KEY_);
+                            }
+                            return;
+                        }
+                        else
+                        {
+                            $rk = array_slice($key, $i);
+                            $root = array_merge($root, array_slice($key, 0, $i-1));
+                            foreach ($kk as $ok)
+                            {
+                                $this->doValidate($data[$ok], $validator, $rk, array_merge($root, array($ok)), $WILDCARD, $SEPARATOR);
+                            }
                         }
                     }
                     else
                     {
-                        $root = array_merge($root, array_slice($key, 0, $i-1));
-                        foreach (array_keys($data) as $ok)
+                        $kk = is_array($data) ? array_keys($data) : array();
+                        if (empty($kk))
                         {
-                            $this->doValidate($data, $validator, array($ok), $root, $WILDCARD, $SEPARATOR);
+                            $KEY_ = array_merge($root, $key);
+                            $KEY = implode($SEPARATOR, $KEY_);
+                            $err = null;
+                            try {
+                                $valid = $validator->exec(null, $KEY, $this, true);
+                            } catch (FormalException $e) {
+                                $valid = false;
+                                $err = $e->getMessage();
+                            }
+                            if (!$valid)
+                            {
+                                $this->err[] = new FormalError(empty($err) ? str_replace(array('{key}', '{args}'), array($KEY, ''), $this->option('missing_value_msg')) : $err, $KEY_);
+                            }
+                        }
+                        else
+                        {
+                            $root = array_merge($root, array_slice($key, 0, $i-1));
+                            foreach ($kk as $ok)
+                            {
+                                $this->doValidate($data, $validator, array($ok), $root, $WILDCARD, $SEPARATOR);
+                            }
                         }
                     }
                     return;
                 }
-                elseif (array_key_exists($k, $data))
+                elseif (is_array($data) && array_key_exists($k, $data))
                 {
                     $data = $data[$k];
                 }

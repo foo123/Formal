@@ -2,7 +2,7 @@
 *   Formal
 *   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 *
-*   @version 1.1.1
+*   @version 1.2.0
 *   https://github.com/foo123/Formal
 *
 **/
@@ -43,6 +43,10 @@ function is_array(x)
 function is_object(x)
 {
     return ('[object Object]' === toString.call(x)) && ('function' === typeof x.constructor) && ('Object' === x.constructor.name);
+}
+function is_array_or_object(x)
+{
+    return ('[object Array]' === toString.call(x)) || (('[object Object]' === toString.call(x)) && ('function' === typeof x.constructor) && ('Object' === x.constructor.name));
 }
 async function is_file(x)
 {
@@ -784,7 +788,7 @@ class FormalError
 
 class Formal
 {
-    static VERSION = "1.1.1";
+    static VERSION = "1.2.0";
 
     // export these
     static Exception = FormalException;
@@ -849,7 +853,7 @@ class Formal
         this.data = null;
         this.err = [];
         data = clone(data);
-        data = await this.doMergeDefaults(data, this.option('defaults'), WILDCARD, SEPARATOR);
+        data = this.doMergeDefaults(data, this.option('defaults'), WILDCARD, SEPARATOR);
         data = await this.doTypecast(data, this.option('typecasters'), [], [], WILDCARD, SEPARATOR);
         this.data = data;
         await this.doValidate(data, this.option('validators'), [], [], WILDCARD, SEPARATOR);
@@ -1016,8 +1020,8 @@ class Formal
         var n = keys.length, defaults = def, i, o, k;
         for (i=n-1; i>=0; --i)
         {
-            o = /*keys[i][1] ? [] :*/ {};
-            k = keys[i]/*[0]*/;
+            o = {};
+            k = keys[i];
             if (is_array(k))
             {
                 k.forEach(function(kk) {
@@ -1033,8 +1037,8 @@ class Formal
         return defaults;
     }
 
-    async doMergeDefaults(data, defaults, WILDCARD = '*', SEPARATOR = '.') {
-        if ((is_array(data) || is_object(data)) && (is_array(defaults) || is_object(defaults)))
+    doMergeDefaults(data, defaults, WILDCARD = '*', SEPARATOR = '.') {
+        if (is_array_or_object(data) && is_array_or_object(defaults))
         {
             var keys, key, def, k, kk, n, o, doMerge, i, ok;
             for (key in defaults)
@@ -1053,23 +1057,23 @@ class Formal
                         k = kk[i];
                         if (WILDCARD === k)
                         {
-                            ok = Object.keys(o);
+                            ok = is_array_or_object(o) ? Object.keys(o) : [];
                             if (!ok.length)
                             {
                                 doMerge = false;
                                 break;
                             }
-                            keys.push(/*[*/ok/*, is_array(o)]*/);
+                            keys.push(ok);
                             o = o[ok[0]];
                         }
-                        else if (HAS.call(o, k))
+                        else if (is_array_or_object(o) && HAS.call(o, k))
                         {
-                            keys.push(/*[*/k/*, is_array(o)]*/);
+                            keys.push(k);
                             o = o[k];
                         }
                         else if (i === n-1)
                         {
-                            keys.push(/*[*/k/*, true]*/);
+                            keys.push(k);
                         }
                         else
                         {
@@ -1079,16 +1083,16 @@ class Formal
                     }
                     if (doMerge)
                     {
-                        data = await this.doMergeDefaults(data, this.doMergeKeys(keys, def), WILDCARD, SEPARATOR);
+                        data = this.doMergeDefaults(data, this.doMergeKeys(keys, def), WILDCARD, SEPARATOR);
                     }
                 }
                 else
                 {
                     if (HAS.call(data, key))
                     {
-                        if ((is_array(data[key]) || is_object(data[key])) && (is_array(def) || is_object(def)))
+                        if (is_array_or_object(data[key]) && is_array_or_object(def))
                         {
-                            data[key] = await this.doMergeDefaults(data[key], def, WILDCARD, SEPARATOR);
+                            data[key] = this.doMergeDefaults(data[key], def, WILDCARD, SEPARATOR);
                         }
                         else if (is_null(data[key]) || (is_string(data[key]) && !data[key].trim().length))
                         {
@@ -1124,26 +1128,32 @@ class Formal
                 {
                     if (i < n)
                     {
-                        rk = key.slice(i);
-                        root = root.concat(key.slice(0, i-1));
-                        ok = Object.keys(data);
-                        for (j=0,m=ok.length; j<m; ++j)
+                        ok = is_array_or_object(data) ? Object.keys(data) : [];
+                        if (ok.length)
                         {
-                            data[ok[j]] = await this.doTypecast(data[ok[j]], typecaster, rk, root.concat(array(ok[j])), WILDCARD, SEPARATOR);
+                            rk = key.slice(i);
+                            root = root.concat(key.slice(0, i-1));
+                            for (j=0,m=ok.length; j<m; ++j)
+                            {
+                                data[ok[j]] = await this.doTypecast(data[ok[j]], typecaster, rk, root.concat(array(ok[j])), WILDCARD, SEPARATOR);
+                            }
                         }
                     }
                     else
                     {
-                        root = root.concat(key.slice(0, i-1));
-                        ok = Object.keys(data);
-                        for (j=0,m=ok.length; j<m; ++j)
+                        ok = is_array_or_object(data) ? Object.keys(data) : [];
+                        if (ok.length)
                         {
-                            data = await this.doTypecast(data, typecaster, array(ok[j]), root, WILDCARD, SEPARATOR);
+                            root = root.concat(key.slice(0, i-1));
+                            for (j=0,m=ok.length; j<m; ++j)
+                            {
+                                data = await this.doTypecast(data, typecaster, array(ok[j]), root, WILDCARD, SEPARATOR);
+                            }
                         }
                     }
                     return data;
                 }
-                else if (HAS.call(data, k))
+                else if (is_array_or_object(data) && HAS.call(data, k))
                 {
                     rk = key.slice(i);
                     root = root.concat(key.slice(0, i));
@@ -1160,10 +1170,9 @@ class Formal
                 data = await typecaster.exec(data, KEY, this);
             }
         }
-        else if (is_object(typecaster) || is_array(typecaster))
+        else if (is_array_or_object(typecaster))
         {
-            var k;
-            for (k in typecaster)
+            for (var k in typecaster)
             {
                 if (!HAS.call(typecaster, k)) continue;
                 data = await this.doTypecast(data, typecaster[k], empty(key) ? k.split(SEPARATOR) : key.concat(k.split(SEPARATOR)), root, WILDCARD, SEPARATOR);
@@ -1188,26 +1197,79 @@ class Formal
                 {
                     if (i < n)
                     {
-                        rk = key.slice(i);
-                        root = root.concat(key.slice(0, i-1));
-                        ok = Object.keys(data);
-                        for (j=0,m=ok.length; j<m; ++j)
+                        ok = is_array_or_object(data) ? Object.keys(data) : [];
+                        if (!ok.length)
                         {
-                            await this.doValidate(data[ok[j]], validator, rk, root.concat(array(ok[j])), WILDCARD, SEPARATOR);
+                            KEY_ = root.concat(key);
+                            KEY = KEY_.join(SEPARATOR);
+                            err = null;
+                            try {
+                                valid = await validator.exec(null, KEY, this, true);
+                            } catch (e) {
+                                if (e instanceof FormalException)
+                                {
+                                    valid = false;
+                                    err = e.message;
+                                }
+                                else
+                                {
+                                    throw e;
+                                }
+                            }
+                            if (!valid)
+                            {
+                                this.err.push(new FormalError(empty(err) ? this.option('missing_value_msg').replace('{key}', KEY).replace('{args}', '') : err, KEY_));
+                            }
+                            return;
+                        }
+                        else
+                        {
+                            rk = key.slice(i);
+                            root = root.concat(key.slice(0, i-1));
+                            for (j=0,m=ok.length; j<m; ++j)
+                            {
+                                await this.doValidate(data[ok[j]], validator, rk, root.concat(array(ok[j])), WILDCARD, SEPARATOR);
+                            }
                         }
                     }
                     else
                     {
-                        root = root.concat(key.slice(0, i-1));
-                        ok = Object.keys(data);
-                        for (j=0,m=ok.length; j<m; ++j)
+                        ok = is_array_or_object(data) ? Object.keys(data) : [];
+                        if (!ok.length)
                         {
-                            await this.doValidate(data, validator, array(ok[j]), root, WILDCARD, SEPARATOR);
+                            KEY_ = root.concat(key);
+                            KEY = KEY_.join(SEPARATOR);
+                            err = null;
+                            try {
+                                valid = await validator.exec(null, KEY, this, true);
+                            } catch (e) {
+                                if (e instanceof FormalException)
+                                {
+                                    valid = false;
+                                    err = e.message;
+                                }
+                                else
+                                {
+                                    throw e;
+                                }
+                            }
+                            if (!valid)
+                            {
+                                this.err.push(new FormalError(empty(err) ? this.option('missing_value_msg').replace('{key}', KEY).replace('{args}', '') : err, KEY_));
+                            }
+                        }
+                        else
+                        {
+                            root = root.concat(key.slice(0, i-1));
+                            for (j=0,m=ok.length; j<m; ++j)
+                            {
+                                await this.doValidate(data, validator, array(ok[j]), root, WILDCARD, SEPARATOR);
+                            }
                         }
                     }
                     return;
                 }
-                else if (HAS.call(data, k))
+                else if (is_array_or_object(data) && HAS.call(data, k))
                 {
                     data = data[k];
                 }
@@ -1258,10 +1320,9 @@ class Formal
                 this.err.push(new FormalError(empty(err) ? this.option('invalid_value_msg').replace('{key}', KEY).replace('{args}', '') : err, KEY_));
             }
         }
-        else if (is_object(validator) || is_array(validator))
+        else if (is_array_or_object(validator))
         {
-            var k;
-            for (k in validator)
+            for (var k in validator)
             {
                 if (!HAS.call(validator, k)) continue;
                 await this.doValidate(data, validator[k], empty(key) ? k.split(SEPARATOR) : key.concat(k.split(SEPARATOR)), root, WILDCARD, SEPARATOR);

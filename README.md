@@ -1,9 +1,9 @@
 Formal
 ======
 
-A simple and versatile (form) input data validation framework based on built-in and custom rules for PHP, JavaScript, Python
+A simple and versatile (Form) Data validation framework based on Rules for PHP, JavaScript, Python
 
-version **1.1.1**
+version **1.2.0**
 
 ![Formal](/formal.jpg)
 
