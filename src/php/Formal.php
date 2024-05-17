@@ -3,7 +3,7 @@
 *   Formal
 *   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 *
-*   @version 1.2.0
+*   @version 1.3.0
 *   https://github.com/foo123/Formal
 *
 **/
@@ -20,6 +20,11 @@ class FormalException extends Exception
 class FormalField
 {
     public $field = null;
+
+    public static function val($v, $m = null)
+    {
+        return ($v instanceof FormalField) && ($m instanceof Formal) ? $m->get($v->field) : $v;
+    }
 
     public static function _($field)
     {
@@ -276,12 +281,12 @@ class FormalType
         return $v;
     }
 
-    public function t_default($v, $k, $m)
+    public function t_default($v, $k, $m, $missingValue = false)
     {
         $defaultValue = $this->inp;
-        if (is_null($v) || (is_string($v) && !strlen(trim($v))))
+        if ($missingValue || is_null($v))
         {
-            $v = $defaultValue;
+            $v = is_callable($defaultValue) ? call_user_func($defaultValue, $k, $m) : $defaultValue;
         }
         return $v;
     }*/
@@ -314,19 +319,19 @@ class FormalType
 
     public function t_min($v, $k, $m)
     {
-        $min = $this->inp;
+        $min = FormalField::val($this->inp, $m);
         return $v < $min ? $min : $v;
     }
 
     public function t_max($v, $k, $m)
     {
-        $max = $this->inp;
+        $max = FormalField::val($this->inp, $m);
         return $v > $max ? $max : $v;
     }
 
     public function t_clamp($v, $k, $m)
     {
-        $min = $this->inp[0]; $max = $this->inp[1];
+        $min = FormalField::val($this->inp[0], $m); $max = FormalField::val($this->inp[1], $m);
         return $v < $min ? $min : ($v > $max ? $max : $v);
     }
 
@@ -531,55 +536,61 @@ class FormalValidator
 
     public function v_maxitems($v, $k, $m, $missingValue)
     {
-        $valid = count($v) <= $this->inp;
-        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at most {$this->inp} items!");
+        $cnt = FormalField::val($this->inp, $m);
+        $valid = count($v) <= $cnt;
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $cnt), $this->msg) : "\"$k\" must have at most {$cnt} items!");
         return $valid;
     }
 
     public function v_minitems($v, $k, $m, $missingValue)
     {
-        $valid = count($v) >= $this->inp;
-        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at least {$this->inp} items!");
+        $cnt = FormalField::val($this->inp, $m);
+        $valid = count($v) >= $cnt;
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $cnt), $this->msg) : "\"$k\" must have at least {$cnt} items!");
         return $valid;
     }
 
     public function v_maxchars($v, $k, $m, $missingValue)
     {
-        $valid = static::strlen($v) <= $this->inp;
-        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at most {$this->inp} characters!");
+        $cnt = FormalField::val($this->inp, $m);
+        $valid = static::strlen($v) <= $cnt;
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $cnt), $this->msg) : "\"$k\" must have at most {$cnt} characters!");
         return $valid;
     }
 
     public function v_minchars($v, $k, $m, $missingValue)
     {
-        $valid = static::strlen($v) >= $this->inp;
-        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at least {$this->inp} characters!");
+        $cnt = FormalField::val($this->inp, $m);
+        $valid = static::strlen($v) >= $cnt;
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $cnt), $this->msg) : "\"$k\" must have at least {$cnt} characters!");
         return $valid;
     }
 
     public function v_maxsize($v, $k, $m, $missingValue)
     {
+        $cnt = FormalField::val($this->inp, $m);
         $fs = false;
         try {
             $fs = @filesize((string)$v);
         } catch (Exception $e) {
             $fs = false;
         }
-        $valid = false === $fs ? false : $fs <= $this->inp;
-        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at most {$this->inp} bytes!");
+        $valid = false === $fs ? false : $fs <= $cnt;
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $cnt), $this->msg) : "\"$k\" must have at most {$cnt} bytes!");
         return $valid;
     }
 
     public function v_minsize($v, $k, $m, $missingValue)
     {
+        $cnt = FormalField::val($this->inp, $m);
         $fs = false;
         try {
             $fs = @filesize((string)$v);
         } catch (Exception $e) {
             $fs = false;
         }
-        $valid = false === $fs ? false : $fs >= $this->inp;
-        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp), $this->msg) : "\"$k\" must have at least {$this->inp} bytes!");
+        $valid = false === $fs ? false : $fs >= $cnt;
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $cnt), $this->msg) : "\"$k\" must have at least {$cnt} bytes!");
         return $valid;
     }
 
@@ -717,8 +728,9 @@ class FormalValidator
 
     public function v_match($v, $k, $m, $missingValue)
     {
-        $valid = (bool)preg_match((string)$this->inp, (string)$v);
-        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $this->inp instanceof FormalDateTime ? $this->inp->getFormat() : $this->inp), $this->msg) : "\"$k\" must match " . ($this->inp instanceof FormalDateTime ? '"' . $this->inp->getFormat() . '"' : 'the') . " pattern!");
+        $pat = FormalField::val($this->inp, $m);
+        $valid = (bool)preg_match((string)$pat, (string)$v);
+        if (!$valid) throw new FormalException(!empty($this->msg) ? str_replace(array('{key}', '{args}'), array($k, $pat instanceof FormalDateTime ? $pat->getFormat() : $pat), $this->msg) : "\"$k\" must match " . ($pat instanceof FormalDateTime ? '"' . $pat->getFormat() . '"' : 'the') . " pattern!");
         return $valid;
     }
 
@@ -766,7 +778,7 @@ class FormalError
 
 class Formal
 {
-    const VERSION = "1.2.0";
+    const VERSION = "1.3.0";
 
     public static function field($field)
     {

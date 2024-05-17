@@ -2,7 +2,7 @@
 *   Formal
 *   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 *
-*   @version 1.2.0
+*   @version 1.3.0
 *   https://github.com/foo123/Formal
 *
 **/
@@ -148,6 +148,10 @@ class FormalField
         this.field = field;
     }
 }
+FormalField.val = function(v, m) {
+    return (v instanceof FormalField) && (m instanceof Formal) ? m.get(v.field) : v;
+};
+
 
 class FormalDateTime
 {
@@ -349,11 +353,11 @@ class FormalType
         return v;
     }
 
-    t_default(v, k, m) {
+    t_default(v, k, m, missingValue) {
         var defaultValue = this.inp;
-        if (is_null(v) || (is_string(v) && !v.trim().length))
+        if (missingValue || is_null(v))
         {
-            v = defaultValue;
+            v = is_callable(defaultValue) ? defaultValue(k, m) : defaultValue;
         }
         return v;
     }*/
@@ -381,17 +385,17 @@ class FormalType
     }
 
     t_min(v, k, m) {
-        var min = this.inp;
+        var min = FormalField.val(this.inp, m);
         return v < min ? min : v;
     }
 
     t_max(v, k, m) {
-        var max = this.inp;
+        var max = FormalField.val(this.inp, m);
         return v > max ? max : v;
     }
 
     t_clamp(v, k, m) {
-        var min = this.inp[0], max = this.inp[1];
+        var min = FormalField.val(this.inp[0], m), max = FormalField.val(this.inp[1], m);
         return v < min ? min : (v > max ? max : v);
     }
 
@@ -581,42 +585,42 @@ class FormalValidator
     }
 
     v_maxitems(v, k, m, missingValue) {
-        var valid = v.length <= this.inp;
-        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at most "+this.inp+" items!");
+        var cnt = FormalField.val(this.inp, m), valid = v.length <= cnt;
+        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', cnt) : "\""+k+"\" must have at most "+cnt+" items!");
         return valid;
     }
 
     v_minitems(v, k, m, missingValue) {
-        var valid = v.length >= this.inp;
-        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at least "+this.inp+" items!");
+        var cnt = FormalField.val(this.inp, m), valid = v.length >= cnt;
+        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', cnt) : "\""+k+"\" must have at least "+cnt+" items!");
         return valid;
     }
 
     v_maxchars(v, k, m, missingValue) {
-        var valid = v.length <= this.inp;
-        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at most "+this.inp+" characters!");
+        var cnt = FormalField.val(this.inp, m), valid = v.length <= cnt;
+        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', cnt) : "\""+k+"\" must have at most "+cnt+" characters!");
         return valid;
     }
 
     v_minchars(v, k, m, missingValue) {
-        var valid = v.length >= this.inp;
-        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at least "+this.inp+" characters!");
+        var cnt = FormalField.val(this.inp, m), valid = v.length >= cnt;
+        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', cnt) : "\""+k+"\" must have at least "+cnt+" characters!");
         return valid;
     }
 
     async v_maxsize(v, k, m, missingValue) {
-        var fs = false, valid = false;
+        var cnt = FormalField.val(this.inp, m), fs = false, valid = false;
         fs = await filesize(String(v));
-        valid = false === fs ? false : fs <= this.inp;
-        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at most "+this.inp+" bytes!");
+        valid = false === fs ? false : fs <= cnt;
+        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', cnt) : "\""+k+"\" must have at most "+cnt+" bytes!");
         return valid;
     }
 
     async v_minsize(v, k, m, missingValue) {
-        var fs = false, valid = false;
+        var cnt = FormalField.val(this.inp, m), fs = false, valid = false;
         fs = await filesize(String(v));
-        valid = false === fs ? false : fs >= this.inp;
-        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp) : "\""+k+"\" must have at least "+this.inp+" bytes!");
+        valid = false === fs ? false : fs >= cnt;
+        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', cnt) : "\""+k+"\" must have at least "+cnt+" bytes!");
         return valid;
     }
 
@@ -744,9 +748,9 @@ class FormalValidator
     }
 
     v_match(v, k, m, missingValue) {
-        var re = this.inp instanceof RegExp ? this.inp : (this.inp instanceof FormalDateTime ? this.inp.getPattern() : new RegExp(String(this.inp), '')),
+        var pat = FormalField.val(this.inp, m), re = pat instanceof RegExp ? pat : (pat instanceof FormalDateTime ? pat.getPattern() : new RegExp(String(pat), '')),
             valid = re.test(String(v));
-        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', this.inp instanceof FormalDateTime ? this.inp.getFormat() : this.inp) : "\""+k+"\" must match " + (this.inp instanceof FormalDateTime ? '"' + this.inp.getFormat() + '"' : 'the') + " pattern!");
+        if (!valid) throw new FormalException(!empty(this.msg) ? this.msg.replace('{key}', k).replace('{args}', pat instanceof FormalDateTime ? pat.getFormat() : pat) : "\""+k+"\" must match " + (pat instanceof FormalDateTime ? '"' + pat.getFormat() + '"' : 'the') + " pattern!");
         return valid;
     }
 
@@ -788,7 +792,7 @@ class FormalError
 
 class Formal
 {
-    static VERSION = "1.2.0";
+    static VERSION = "1.3.0";
 
     // export these
     static Exception = FormalException;

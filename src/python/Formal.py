@@ -2,7 +2,7 @@
 #   Formal
 #   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 #
-#   @version 1.2.0
+#   @version 1.3.0
 #   https://github.com/foo123/Formal
 #
 ##
@@ -111,6 +111,9 @@ class FormalException(Exception):
     pass
 
 class FormalField:
+    def val(v, m = None):
+        return m.get(v.field) if isinstance(v, FormalField) and isinstance(m, Formal) else v
+
     def __init__(self, field):
         self.field = str(field)
 
@@ -288,10 +291,10 @@ class FormalType:
     #            v[int(field)] = type.exec(v[int(field)] if field in array_keys(v) else None, field if empty(k) else k+SEPARATOR+field, m)
     #    return v
     #
-    #def t_default(self, v, k, m):
+    #def t_default(self, v, k, m, missingValue = False):
     #    defaultValue = self.inp
-    #    if is_null(v) or (is_string(v) and not len(v.strip())):
-    #        v = defaultValue
+    #    if missingValue or is_null(v):
+    #        v = defaultValue(k, m) if is_callable(defaultValue) else defaultValue
     #    return v
 
     def t_bool(self, v, k, m):
@@ -311,16 +314,16 @@ class FormalType:
         return str(v)
 
     def t_min(self, v, k, m):
-        min = self.inp
+        min = FormalField.val(self.inp, m)
         return min if v < min else v
 
     def t_max(self, v, k, m):
-        max = self.inp
+        max = FormalField.val(self.inp, m)
         return max if v > max else v
 
     def t_clamp(self, v, k, m):
-        min = self.inp[0]
-        max = self.inp[1]
+        min = FormalField.val(self.inp[0], m)
+        max = FormalField.val(self.inp[1], m)
         return min if v < min else (max if v > max else v)
 
     def t_trim(self, v, k, m):
@@ -453,43 +456,49 @@ class FormalValidator:
         return valid
 
     def v_maxitems(self, v, k, m, missingValue):
-        valid = len(v) <= self.inp
-        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(self.inp)) if not empty(self.msg) else "\""+k+"\" must have at most "+str(self.inp)+" items!")
+        cnt = FormalField.val(self.inp, m)
+        valid = len(v) <= cnt
+        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(cnt)) if not empty(self.msg) else "\""+k+"\" must have at most "+str(cnt)+" items!")
         return valid
 
     def v_minitems(self, v, k, m, missingValue):
-        valid = len(v) >= self.inp
-        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(self.inp)) if not empty(self.msg) else "\""+k+"\" must have at least "+str(self.inp)+" items!")
+        cnt = FormalField.val(self.inp, m)
+        valid = len(v) >= cnt
+        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(cnt)) if not empty(self.msg) else "\""+k+"\" must have at least "+str(cnt)+" items!")
         return valid
 
     def v_maxchars(self, v, k, m, missingValue):
-        valid = len(v) <= self.inp
-        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(self.inp)) if not empty(self.msg) else "\""+k+"\" must have at most "+str(self.inp)+" characters!")
+        cnt = FormalField.val(self.inp, m)
+        valid = len(v) <= cnt
+        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(cnt)) if not empty(self.msg) else "\""+k+"\" must have at most "+str(cnt)+" characters!")
         return valid
 
     def v_minchars(self, v, k, m, missingValue):
-        valid = len(v) >= self.inp
-        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(self.inp)) if not empty(self.msg) else "\""+k+"\" must have at least "+str(self.inp)+" characters!")
+        cnt = FormalField.val(self.inp, m)
+        valid = len(v) >= cnt
+        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(cnt)) if not empty(self.msg) else "\""+k+"\" must have at least "+str(cnt)+" characters!")
         return valid
 
     def v_maxsize(self, v, k, m, missingValue):
+        cnt = FormalField.val(self.inp, m)
         fs = False
         try:
             fs = os.path.getsize(str(v))
         except OSError:
             fs = False
-        valid = False if fs is False else (fs <= self.inp)
-        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(self.inp)) if not empty(self.msg) else "\""+k+"\" must have at most "+str(self.inp)+" bytes!")
+        valid = False if fs is False else (fs <= cnt)
+        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(cnt)) if not empty(self.msg) else "\""+k+"\" must have at most "+str(cnt)+" bytes!")
         return valid
 
     def v_minsize(self, v, k, m, missingValue):
+        cnt = FormalField.val(self.inp, m)
         fs = False
         try:
             fs = os.path.getsize(str(v))
         except OSError:
             fs = False
-        valid = False if fs is False else (fs >= self.inp)
-        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(self.inp)) if not empty(self.msg) else "\""+k+"\" must have at least "+str(self.inp)+" bytes!")
+        valid = False if fs is False else (fs >= cnt)
+        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', str(cnt)) if not empty(self.msg) else "\""+k+"\" must have at least "+str(cnt)+" bytes!")
         return valid
 
     def v_eq(self, v, k, m, missingValue):
@@ -590,9 +599,10 @@ class FormalValidator:
         return valid
 
     def v_match(self, v, k, m, missingValue):
-        rex = self.inp.getPattern() if isinstance(self.inp, FormalDateTime) else self.inp
+        pat = FormalField.val(self.inp, m)
+        rex = pat.getPattern() if isinstance(pat, FormalDateTime) else pat
         valid = bool(re.match(rex, str(v)))
-        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', self.inp.getFormat() if isinstance(self.inp, FormalDateTime) else str(self.inp)) if not empty(self.msg) else "\""+k+"\" must match " + (self.inp.getFormat() if isinstance(self.inp, FormalDateTime) else 'the') + " pattern!")
+        if not valid: raise FormalException(self.msg.replace('{key}', k).replace('{args}', pat.getFormat() if isinstance(pat, FormalDateTime) else str(pat)) if not empty(self.msg) else "\""+k+"\" must match " + (pat.getFormat() if isinstance(pat, FormalDateTime) else 'the') + " pattern!")
         return valid
 
     def v_email(self, v, k, m, missingValue):
@@ -624,7 +634,7 @@ class Formal:
     Formal for Python,
     https://github.com/foo123/Formal
     """
-    VERSION = "1.2.0"
+    VERSION = "1.3.0"
 
     # export these
     Exception = FormalException

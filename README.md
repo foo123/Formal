@@ -3,7 +3,7 @@ Formal
 
 A simple and versatile (Form) Data validation framework based on Rules for PHP, JavaScript, Python
 
-version **1.2.0**
+version **1.3.0**
 
 ![Formal](/formal.jpg)
 
@@ -72,8 +72,8 @@ $formal = (new Formal())
             'koo.*' => 'bar'
         ])
         ->option('typecasters', [
-            'num.*' => Formal::typecast('composite', [Formal::typecast('float'), Formal::typecast('clamp', [0.0, 1.0])
-        ])])
+            'num.*' => Formal::typecast('composite', [Formal::typecast('float'), Formal::typecast('clamp', [0.0, 1.0])])
+        ])
         ->option('validators', [
             'date.*' => Formal::validate('match', Formal::datetime('Y-m-d'), '"{key}" should match {args} !'),
             'date.0' => Formal::validate('eq', Formal::field('date.1'))
@@ -150,7 +150,7 @@ date.1
 
 ```php
 // composite typecaster
-Formal::typecast('composite', [$typecaster1, $typecaster2, ..]);
+Formal::typecast('composite', [$typecaster1, $typecaster2/*, ..*/]);
 
 // boolean typecaster
 Formal::typecast('bool');
@@ -165,13 +165,13 @@ Formal::typecast('float');
 Formal::typecast('str');
 
 // min value typecaster
-Formal::typecast('min', $minValue);
+Formal::typecast('min', $minValueOrField);
 
 // max value typecaster
-Formal::typecast('max', $maxValue);
+Formal::typecast('max', $maxValueOrField);
 
 // clamp typecaster
-Formal::typecast('clamp', [$minValue, $maxValue]);
+Formal::typecast('clamp', [$minValueOrField, $maxValueOrField]);
 
 // trim typecaster
 Formal::typecast('trim');
@@ -214,22 +214,22 @@ Formal::validate('file');
 Formal::validate('empty');
 
 // max items validator
-Formal::validate('maxitems', $maxCount);
+Formal::validate('maxitems', $maxCountOrField);
 
 // min items validator
-Formal::validate('minitems', $minCount);
+Formal::validate('minitems', $minCountOrField);
 
 // max chars validator
-Formal::validate('maxchars', $maxLen);
+Formal::validate('maxchars', $maxLenOrField);
 
 // min chars validator
-Formal::validate('minchars', $minLen);
+Formal::validate('minchars', $minLenOrField);
 
 // max file size validator
-Formal::validate('maxsize', $maxSize);
+Formal::validate('maxsize', $maxSizeOrField);
 
 // min file size validator
-Formal::validate('minsize', $minSize);
+Formal::validate('minsize', $minSizeOrField);
 
 // equals validator
 Formal::validate('eq', $otherValueOrField);
@@ -253,13 +253,13 @@ Formal::validate('lte', $otherValueOrField);
 Formal::validate('between', [$minValueOrField, $maxValueOrField]);
 
 // in array of values validator
-Formal::validate('in', [$val1, $val2, ..]);
+Formal::validate('in', [$val1, $val2/*, ..*/]/*or field*/);
 
 // not in array of values validator
-Formal::validate('not_in', [$val1, $val2, ..]);
+Formal::validate('not_in', [$val1, $val2/*, ..*/]/*or field*/);
 
 // match pattern validator
-Formal::validate('match', $pattern);
+Formal::validate('match', $patternOrField);
 
 // match valid email pattern validator
 Formal::validate('email');
