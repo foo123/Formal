@@ -3,7 +3,7 @@
 *   Formal
 *   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 *
-*   @version 1.3.0
+*   @version 1.3.1
 *   https://github.com/foo123/Formal
 *
 **/
@@ -65,8 +65,8 @@ class FormalDateTime
         return new static($format, $locale);
     }
 
-    private $format = '';
-    private $pattern = '';
+    protected $format = '';
+    protected $pattern = '';
 
     public function __construct($format, $locale = null)
     {
@@ -751,8 +751,8 @@ class FormalValidator
 
 class FormalError
 {
-    private $key = array();
-    private $msg = '';
+    protected $key = array();
+    protected $msg = '';
 
     public function __construct($msg = '', $key = array())
     {
@@ -778,7 +778,7 @@ class FormalError
 
 class Formal
 {
-    const VERSION = "1.3.0";
+    const VERSION = "1.3.1";
 
     public static function field($field)
     {
@@ -800,9 +800,9 @@ class Formal
         return new FormalValidator($validator, $args, $msg);
     }
 
-    private $opts = array();
-    private $err = array();
-    private $data = null;
+    protected $opts = array();
+    protected $err = array();
+    protected $data = null;
 
     public function __construct()
     {
@@ -1008,7 +1008,7 @@ class Formal
         return $default;
     }
 
-    private function clone($o)
+    protected function clone($o)
     {
         if (is_array($o))
         {
@@ -1022,7 +1022,7 @@ class Formal
         }
     }
 
-    private function doMergeKeys($keys, $def)
+    protected function doMergeKeys($keys, $def)
     {
         $n = count($keys);
         $defaults = $def;
@@ -1046,7 +1046,7 @@ class Formal
         return $defaults;
     }
 
-    private function doMergeDefaults($data, $defaults, $WILDCARD = '*', $SEPARATOR = '.')
+    protected function doMergeDefaults($data, $defaults, $WILDCARD = '*', $SEPARATOR = '.')
     {
         if (is_array($data) && is_array($defaults))
         {
@@ -1120,7 +1120,7 @@ class Formal
         return $data;
     }
 
-    private function doTypecast($data, $typecaster, $key = array(), $root = array(), $WILDCARD = '*', $SEPARATOR = '.')
+    protected function doTypecast($data, $typecaster, $key = array(), $root = array(), $WILDCARD = '*', $SEPARATOR = '.')
     {
         if ($typecaster instanceof FormalType)
         {
@@ -1188,7 +1188,7 @@ class Formal
         return $data;
     }
 
-    private function doValidate($data, $validator, $key = array(), $root = array(), $WILDCARD = '*', $SEPARATOR = '.')
+    protected function doValidate($data, $validator, $key = array(), $root = array(), $WILDCARD = '*', $SEPARATOR = '.')
     {
         if ($this->option('break_on_first_error') && !empty($this->err)) return;
         if ($validator instanceof FormalValidator)

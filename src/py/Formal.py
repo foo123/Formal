@@ -2,7 +2,7 @@
 #   Formal
 #   validate nested (form) data with built-in and custom rules for PHP, JavaScript, Python
 #
-#   @version 1.3.0
+#   @version 1.3.1
 #   https://github.com/foo123/Formal
 #
 ##
@@ -634,7 +634,7 @@ class Formal:
     Formal for Python,
     https://github.com/foo123/Formal
     """
-    VERSION = "1.3.0"
+    VERSION = "1.3.1"
 
     # export these
     Exception = FormalException
